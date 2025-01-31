@@ -60,4 +60,10 @@ class Atomic
             asm volatile ("lock; btr%z1 %2, %1; setc %0" : "=q" (ret), "+m" (val) : "ir" (bit) : "cc");
             return ret;
         }
+
+        template <typename T>
+        ALWAYS_INLINE static inline void store(T &ptr, T val)
+        {
+            __atomic_store_n(&ptr, val, __ATOMIC_SEQ_CST);
+        }
 };
