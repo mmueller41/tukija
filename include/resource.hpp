@@ -42,6 +42,8 @@ class alignas(64) Cpu_resource : public Resource
         Sm *_semaphore {}; // Used for pausing and waking the worker SC
 
     public:
+        Cpu_resource(uint16 id) : Resource(Type::CPU, id) {}
+
         bool occupy(Pd *pd, Sm *sm);
 
         void release();
