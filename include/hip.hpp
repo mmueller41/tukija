@@ -80,6 +80,7 @@ class Hip
         uint32  cfg_utcb;               // 0x2c
         uint32  freq_tsc;               // 0x30
         uint32  reserved;               // 0x34
+        void *topo_model;
         Hip_cpu cpu_desc[NUM_CPU];
         Hip_mem mem_desc[];
 
