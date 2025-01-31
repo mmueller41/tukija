@@ -35,14 +35,14 @@ class Sys_call : public Sys_regs
         };
 
         ALWAYS_INLINE
-        inline unsigned long pt() const { return ARG_1 >> 8; }
+        inline unsigned long pt() const { return ARG_1 >> 9; }
 };
 
 class Sys_create_pd : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sel() const { return ARG_1 >> 8; }
+        inline unsigned long sel() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long pd() const { return ARG_2; }
@@ -61,7 +61,7 @@ class Sys_create_ec : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sel() const { return ARG_1 >> 8; }
+        inline unsigned long sel() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long pd() const { return ARG_2; }
@@ -83,7 +83,7 @@ class Sys_create_sc : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sel() const { return ARG_1 >> 8; }
+        inline unsigned long sel() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long pd() const { return ARG_2; }
@@ -99,7 +99,7 @@ class Sys_create_pt : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sel() const { return ARG_1 >> 8; }
+        inline unsigned long sel() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long pd() const { return ARG_2; }
@@ -118,7 +118,7 @@ class Sys_create_sm : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sel() const { return ARG_1 >> 8; }
+        inline unsigned long sel() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long pd() const { return ARG_2; }
@@ -149,7 +149,7 @@ class Sys_revoke : public Sys_regs
         inline mword pd() const { return ARG_3; }
 
         ALWAYS_INLINE
-        inline mword sm() const { return ARG_1 >> 8; }
+        inline mword sm() const { return ARG_1 >> 9; }
 
         inline void rem(Pd * p) { ARG_3 = reinterpret_cast<mword>(p); }
 };
@@ -163,7 +163,7 @@ class Sys_misc : public Sys_regs
         inline Crd & crd() { return reinterpret_cast<Crd &>(ARG_2); }
 
         ALWAYS_INLINE
-        inline mword pd_snd() const { return ARG_1 >> 8; }
+        inline mword pd_snd() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline mword pd_dst() const { return ARG_3; }
@@ -179,7 +179,7 @@ class Sys_reply : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sm() const { return ARG_1 >> 8; }
+        inline unsigned long sm() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline mword sm_kern() const { return ARG_1; }
@@ -189,7 +189,7 @@ class Sys_ec_ctrl : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long ec() const { return ARG_1 >> 8; }
+        inline unsigned long ec() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long cnt() const { return ARG_2; }
@@ -223,7 +223,7 @@ class Sys_sc_ctrl : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sc() const { return ARG_1 >> 8; }
+        inline unsigned long sc() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned long ec() const { return ARG_2; }
@@ -252,7 +252,7 @@ class Sys_pt_ctrl : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long pt() const { return ARG_1 >> 8; }
+        inline unsigned long pt() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline mword id() const { return ARG_2; }
@@ -262,7 +262,7 @@ class Sys_sm_ctrl : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sm() const { return ARG_1 >> 8; }
+        inline unsigned long sm() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned op() const { return flags() & 0x1; }
@@ -278,7 +278,7 @@ class Sys_pd_ctrl : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long src() const { return ARG_1 >> 8; }
+        inline unsigned long src() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline unsigned dbg() const { return flags() & 0x2; }
@@ -301,7 +301,7 @@ class Sys_assign_pci : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long pd() const { return ARG_1 >> 8; }
+        inline unsigned long pd() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline mword dev() const { return ARG_2; }
@@ -314,7 +314,7 @@ class Sys_assign_gsi : public Sys_regs
 {
     public:
         ALWAYS_INLINE
-        inline unsigned long sm() const { return ARG_1 >> 8; }
+        inline unsigned long sm() const { return ARG_1 >> 9; }
 
         ALWAYS_INLINE
         inline mword dev() const { return ARG_2; }
