@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "resource.hpp"
 #include "cip.hpp"
 
 class Sc;
 class Sm;
+class Pd;
 
 struct Worker
 {
