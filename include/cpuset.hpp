@@ -22,6 +22,7 @@
 #pragma once
 
 #include "atomic.hpp"
+#include "bits.hpp"
 #include "types.hpp"
 
 class Cpuset
@@ -73,5 +74,18 @@ class Cpuset
             for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
                 Atomic::set_mask (  value(i * CPUS_PER_VALUE),
                                   s.value(i * CPUS_PER_VALUE));
+        }
+
+        template <typename T>
+        void for_each (T const fn)
+        {
+            long cpu = 0;
+            for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
+            {
+                while ((cpu = bit_scan_forward(raw[i])) != -1)
+                {
+                    fn(cpu);
+                }
+            }
         }
 };
