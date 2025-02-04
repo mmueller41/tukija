@@ -2,7 +2,7 @@
 #include "sm.hpp"
 #include "ec.hpp"
 
-bool Cpu_resource::occupy(Pd *pd, Sm *sm)
+bool Cpu_resource::occupy(Cell *pd, Sm *sm)
 {
     bool rc = Resource::occupy(pd);
     if (rc)
