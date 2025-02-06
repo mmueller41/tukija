@@ -82,8 +82,10 @@ class Cpuset
             long cpu = 0;
             for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
             {
-                while ((cpu = bit_scan_forward(raw[i])) != -1)
+                mword subset = raw[i];
+                while ((cpu = bit_scan_forward(subset)) != -1)
                 {
+                    Atomic::clr_mask(subset, 1UL << bit_cpu(cpu));
                     fn(cpu);
                 }
             }
