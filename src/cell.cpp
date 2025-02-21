@@ -27,7 +27,7 @@ unsigned Cell::yield_cores(Cpuset &cores, bool release)
                    {
         if (workers[cpu].sc) {
             /* Check whether the yield flag has already been set, if not set it */
-            short expect = 0;
+            unsigned long expect = 0;
             bool will_sleep = !__atomic_compare_exchange_n(&(cip->worker_info[cpu].yield_flag), &expect, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
             if (will_sleep)
                 return;
@@ -44,7 +44,17 @@ unsigned Cell::yield_cores(Cpuset &cores, bool release)
     return reclaimed;
 }
 
+void Cell::add_cores(Cpuset &cores)
+{
+    cores.for_each([&](long cpu)
+                   {
+        if (wake_core(static_cast<unsigned>(cpu))) {
+            cip->cores_new.set(static_cast<unsigned>(cpu));
+        } });
+}
+
 void *Cell::operator new(size_t, Pd &pd)
 {
-    return pd.cell_cache.alloc(pd.quota);
+    size_t cell_size = align_up(sizeof(Cell), PAGE_SIZE);
+    return Buddy::alloc(static_cast<unsigned short>(cell_size / PAGE_SIZE), pd.quota, Buddy::NOFILL);
 }
