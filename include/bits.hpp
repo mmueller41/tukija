@@ -102,3 +102,9 @@ static inline mword align_up (mword val, mword align)
     val += (align - 1);                 // Expect power-of-2
     return align_dn (val, align);
 }
+
+ALWAYS_INLINE
+inline mword popcount(mword bitset)
+{
+    return __builtin_popcountl(bitset);
+}

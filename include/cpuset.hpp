@@ -85,9 +85,18 @@ class Cpuset
                 mword subset = raw[i];
                 while ((cpu = bit_scan_forward(subset)) != -1)
                 {
-                    Atomic::clr_mask(subset, 1UL << bit_cpu(cpu));
+                    Atomic::clr_mask(subset, 1UL << bit_cpu(static_cast<unsigned int>(cpu)));
                     fn(cpu);
                 }
             }
+        }
+
+        unsigned count()
+        {
+            unsigned count = 0;
+            for (unsigned i = 0; i < sizeof(raw); i++) {
+                count += static_cast<unsigned>(popcount(raw[i]));
+            }
+            return count;
         }
 };
