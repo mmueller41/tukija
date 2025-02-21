@@ -560,4 +560,25 @@ class Ec : public Kobject, public Refcount, public Queue<Sc>
         {
             return !utcb && (regs.vtlb || regs.vmcb_state || regs.vmcs_state);
         }
+
+        /** 
+         * Cell-specific hypercalls
+         */
+        NORETURN
+        static void sys_create_cell();
+
+        NORETURN
+        static void sys_alloc();
+
+        NORETURN
+        static void sys_release();
+
+        NORETURN
+        static void sys_cell_ctrl();
+
+        NORETURN
+        static void sys_create_habitat();
+
+        NORETURN
+        static void sys_habitat_ctrl();
 };
