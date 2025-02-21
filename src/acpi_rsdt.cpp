@@ -24,13 +24,14 @@
 #include "pd.hpp"
 
 struct Acpi_table_rsdt::table_map Acpi_table_rsdt::map[] INITDATA =
-{
-    { SIG ('A','P','I','C'),    &Acpi::madt },
-    { SIG ('D','M','A','R'),    &Acpi::dmar },
-    { SIG ('F','A','C','P'),    &Acpi::fadt },
-    { SIG ('H','P','E','T'),    &Acpi::hpet },
-    { SIG ('M','C','F','G'),    &Acpi::mcfg },
-    { SIG ('I','V','R','S'),    &Acpi::ivrs },
+    {
+        {SIG('A', 'P', 'I', 'C'), &Acpi::madt},
+        {SIG('D', 'M', 'A', 'R'), &Acpi::dmar},
+        {SIG('F', 'A', 'C', 'P'), &Acpi::fadt},
+        {SIG('H', 'P', 'E', 'T'), &Acpi::hpet},
+        {SIG('M', 'C', 'F', 'G'), &Acpi::mcfg},
+        {SIG('I', 'V', 'R', 'S'), &Acpi::ivrs},
+        {SIG('S', 'R', 'A', 'T'), &Acpi::srat},
 };
 
 void Acpi_table_rsdt::parse (Paddr addr, size_t size) const

@@ -78,7 +78,7 @@ class Acpi
 
         static unsigned const timer_frequency = 3579545;
 
-        static Paddr dmar, fadt, facs, hpet, madt, mcfg, rsdt, xsdt, ivrs;
+        static Paddr dmar, fadt, facs, hpet, madt, mcfg, rsdt, xsdt, ivrs, srat;
 
         static Acpi_gas pm1a_sts;
         static Acpi_gas pm1b_sts;
