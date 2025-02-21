@@ -36,9 +36,8 @@ class Cell
          * @param pre_alloc - the set of prefered CPU cores for allocation
          * @param new_cip - pointer to the CIP for this cell
         */
-        Cell(unsigned _prio, Cpuset &pre_alloc, struct Cip *new_cip) : prio(_prio) , cip(new_cip)
+        Cell(unsigned _prio, struct Cip *new_cip) : prio(_prio) , cip(new_cip)
         {
-            prefered_cores.merge(pre_alloc);
         }
 
         /*** CPU Resource functions ***/
@@ -47,7 +46,7 @@ class Cell
          * Add CPU cores to this cell
          * @param cores - the CPU core IDs to add
          */
-        void add_cores(Cpuset cores);
+        void add_cores(Cpuset &cores);
 
         /**
          * Yield a specific CPU 
