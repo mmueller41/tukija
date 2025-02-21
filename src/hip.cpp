@@ -88,6 +88,8 @@ void Hip::build (mword magic, mword addr)
         add_buddy (mem, h, system_mem_max, memory_allocated, false);
         h->length = static_cast<uint16>(reinterpret_cast<mword>(mem) - reinterpret_cast<mword>(h));
     }
+
+    h->topo_phys = Buddy::ptr_to_phys(static_cast<void*>(Tip::tip()));
 }
 
 void Hip::build_mbi1(Hip_mem *&mem, mword addr)
