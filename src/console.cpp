@@ -171,7 +171,7 @@ void Console::vprintf (char const *format, va_list args)
         }
     }
 
-    putc ('\n');
+    //putc ('\n');
 }
 
 void Console::print (char const *format, ...)

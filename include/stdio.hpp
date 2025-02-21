@@ -29,7 +29,7 @@
 do {                                                                \
     if (EXPECT_FALSE ((trace_mask & (T)) == (T))) {                 \
         mword __esp;                                                \
-        Console::print ("[%2ld] " format,                           \
+        Console::print ("[%2ld] " format "\n",                           \
                 static_cast<long>(((reinterpret_cast<mword>(&__esp) - 1) & ~PAGE_MASK) ==     \
                 CPU_LOCAL_STCK ? Cpu::id : ~0UL), ## __VA_ARGS__);  \
     }                                                               \
@@ -57,6 +57,7 @@ enum {
     TRACE_OOM       = 1UL << 24,
     TRACE_SYSCALL   = 1UL << 30,
     TRACE_ERROR     = 1UL << 31,
+    TRACE_TIP       = 1UL << 32,
 };
 
 /*
@@ -65,13 +66,13 @@ enum {
 unsigned const trace_mask =
                             TRACE_CPU       |
                             TRACE_IOMMU     |
+                            TRACE_ACPI      |
 #ifdef DEBUG
 //                            TRACE_OOM       |
 //                            TRACE_APIC      |
 //                            TRACE_KEYB      |
                             TRACE_VMX       |
                             TRACE_SVM       |
-//                            TRACE_ACPI      |
 //                            TRACE_MEMORY    |
 //                            TRACE_PCI       |
 //                            TRACE_SCHEDULE  |
