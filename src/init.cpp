@@ -118,4 +118,8 @@ void init (mword magic, mword mbi)
     Console_vga::con.setup();
 
     Keyb::init();
+    Console::print("Hypervisor Info Page at %p\n", Hip::hip());
+    Console::print("Topology Information Pages have a length of %d bytes\n", Tip::tip()->length);
+    Console::print("Topology Info Pages reside at physical address %018lx\n", Hip::tip_phys_addr());
+    Tip::tip()->print();
 }
