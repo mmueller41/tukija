@@ -24,6 +24,7 @@
 #include "atomic.hpp"
 #include "config.hpp"
 #include "extern.hpp"
+#include "tip.hpp"
 
 class Hip_cpu
 {
@@ -80,7 +81,8 @@ class Hip
         uint32  cfg_utcb;               // 0x2c
         uint32  freq_tsc;               // 0x30
         uint32  reserved;               // 0x34
-        void *topo_model;
+        mword topo_model;
+        Paddr topo_phys;
         Hip_cpu cpu_desc[NUM_CPU];
         Hip_mem mem_desc[];
 
@@ -172,4 +174,7 @@ class Hip
 
         static void add_cpu();
         static void add_check();
+
+        static void tip_virt(mword virt) { hip()->topo_model = virt; }
+        static mword tip_phys_addr() { return hip()->topo_model; }
 };
