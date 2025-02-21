@@ -28,7 +28,7 @@
 #include "sm.hpp"
 
 INIT_PRIORITY (PRIO_SLAB)
-Slab_cache Pd::cache (sizeof (Pd), 32);
+Slab_cache Pd::cache (sizeof (Pd), 128);
 
 Pd *Pd::current;
 
@@ -36,7 +36,7 @@ INIT_PRIORITY (PRIO_SLAB)
 ALIGNED(32) Pd Pd::kern (&Pd::kern);
 ALIGNED(32) Pd Pd::root (&Pd::root, NUM_EXC, 0x1f);
 
-Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof (Pt), 32), mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), cell_cache(sizeof (Cell), 1)
+Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof (Pt), 32), mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), cell_cache(sizeof (Cell), 2)
 {
     hpt = Hptp (reinterpret_cast<mword>(&PDBR));
 
@@ -47,17 +47,19 @@ Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof
 
     // HIP
     Space_mem::insert_root (own->quota, own->mdb_cache, reinterpret_cast<mword>(&FRAME_H), reinterpret_cast<mword>(&FRAME_H) + PAGE_SIZE, 1);
+    Space_mem::insert_root (own->quota, own->mdb_cache, reinterpret_cast<mword>(&FRAME_T), reinterpret_cast<mword>(&FRAME_T) + 32*PAGE_SIZE, 1);
 
     // I/O Ports
     Space_pio::addreg (own->quota, own->mdb_cache, 0, 1UL << 16, 7);
 }
 
-Pd::Pd (Pd *own, mword sel, mword a) : Kobject (PD, static_cast<Space_obj *>(own), sel, a, free, pre_free), pt_cache (sizeof (Pt), 32) , mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), cell_cache(sizeof(Cell), 1)
+Pd::Pd (Pd *own, mword sel, mword a) : Kobject (PD, static_cast<Space_obj *>(own), sel, a, free, pre_free), pt_cache (sizeof (Pt), 32) , mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), cell_cache(sizeof(Cell), 2)
 {
     if (this == &Pd::root) {
         bool res = Quota::init.transfer_to(quota, Quota::init.limit());
         assert(res);
     }
+    trace(0, "Created PD with sel=%lu", sel);
 }
 
 template <typename S>
@@ -79,10 +81,10 @@ bool Pd::delegate (Pd *snd, mword const snd_base, mword const rcv_base, mword co
 
     Mdb *mdb;
     for (mword addr = snd_base; (mdb = snd->S::tree_lookup (addr, true)); addr = mdb->node_base + (1UL << mdb->node_order)) {
-
         mword o, b = snd_base;
-        if ((o = clamp (mdb->node_base, b, mdb->node_order, ord)) == ~0UL)
+        if ((o = clamp (mdb->node_base, b, mdb->node_order, ord)) == ~0UL) {
             break;
+        }
 
         if (quota.hit_limit(1)) {
             Cpu::hazard |= HZD_OOM;
@@ -112,7 +114,7 @@ bool Pd::delegate (Pd *snd, mword const snd_base, mword const rcv_base, mword co
             continue;
         }
 
-        s |= S::update (qg, node);
+        s |= S::update(qg, node);
 
         if (Cpu::hazard & HZD_OOM) {
             s |= S::update (qg, node, attr);
@@ -226,7 +228,7 @@ void Pd::revoke (mword const base, mword const ord, mword const attr, bool self,
 
 mword Pd::clamp (mword snd_base, mword &rcv_base, mword snd_ord, mword rcv_ord)
 {
-    if ((snd_base ^ rcv_base) >> max (snd_ord, rcv_ord))
+    if ((snd_base ^ rcv_base) >> max(snd_ord, rcv_ord))
         return ~0UL;
 
     rcv_base |= snd_base;
