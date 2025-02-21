@@ -341,3 +341,22 @@ class Sys_assign_gsi : public Sys_regs
             ARG_3 = static_cast<mword>(val);
         }
 };
+
+/** Cell-specifc hypercalls register definition */
+class Sys_create_cell : public Sys_regs
+{
+    public:
+        ALWAYS_INLINE
+        inline unsigned long pd() const { return ARG_1 >> 9; }
+
+        ALWAYS_INLINE
+        inline unsigned short prio() const { return static_cast <unsigned short>(flags() & 0xFF); }
+
+        ALWAYS_INLINE
+        inline unsigned long dst() const { return ARG_2; }
+
+        ALWAYS_INLINE
+        inline void cip(mword cip_pa) { ARG_3 = cip_pa; }
+};
+
+

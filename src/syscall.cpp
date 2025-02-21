@@ -20,6 +20,7 @@
  * GNU General Public License version 2 for more details.
  */
 
+#include "cip.hpp"
 #include "iommu_intel.hpp"
 #include "gsi.hpp"
 #include "hip.hpp"
@@ -415,6 +416,8 @@ void Ec::sys_create_pd()
 
     Crd crd = r->crd();
     pd->del_crd (Pd::current, Crd (Crd::OBJ), crd);
+
+    pd->delegate<Space_mem>(&Pd::kern, reinterpret_cast<Paddr>(&FRAME_T) >> PAGE_BITS, (USER_ADDR - 32 * PAGE_SIZE) >> PAGE_BITS, 5, 1);
 
     if (Cpu::hazard & HZD_OOM) {
         Cpu::hazard &= ~HZD_OOM;
@@ -1308,6 +1311,59 @@ void Ec::ret_xcpu_reply()
     current->make_current();
 }
 
+void Ec::sys_create_cell()
+{
+    check<sys_create_cell>(0, false);
+
+    Sys_create_cell *r = static_cast<Sys_create_cell*>(current->sys_regs());
+
+    Capability cap = Space_obj::lookup(r->pd());
+    if (EXPECT_FALSE (cap.obj()->type() != Kobject::PD)) {
+        trace(TRACE_ERROR, "%s: Bad PD cap (%#lx), type=%u", __func__, r->pd(), cap.obj()->type());
+        sys_finish<Sys_regs::BAD_CAP>();
+    }
+
+    Pd *pd = static_cast<Pd*>(cap.obj());
+    if (pd->cell) {
+        trace(TRACE_ERROR, "%s: A cell was already created for PD %#lx", __func__, r->pd());
+        sys_finish<Sys_regs::BAD_PAR>();
+    }
+
+    unsigned long *cip_hva = reinterpret_cast<unsigned long*>(Buddy::alloc(2, pd->quota, Buddy::NOFILL));
+
+    r->cip(Buddy::ptr_to_phys(cip_hva));
+
+    if (!cip_hva) {
+        trace(TRACE_ERROR, "%s: Unable to allocate kernel memory for CIP", __func__);
+        sys_finish<Sys_regs::QUO_OOM>();
+    }
+
+    *cip_hva = 0xdeadbeef;
+
+    Pd::current->Space_mem::insert(Pd::current->quota, reinterpret_cast<mword>(r->dst()), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
+    pd->Space_mem::insert(pd->quota, (USER_ADDR - 36 * PAGE_SIZE), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
+    //Pd::current->delegate<Space_mem>(pd, (USER_ADDR - 36 * PAGE_SIZE), r->dst(), 2, Hpt::HPT_W | Hpt::HPT_P, 1);
+
+    pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
+
+    trace(0, "Created new cell for PD %#lx of priority %d", r->pd(), r->prio());
+    trace(0, "Cell Info Page for cell %p of PD %#lx ", static_cast<void*>(pd->cell), r->pd());
+    trace(0, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
+    trace(0, "Size of CIP is %lu", sizeof(struct Cip));
+
+    // pd->cell->cip->print();
+
+    sys_finish<Sys_regs::SUCCESS>();
+}
+
+void Ec::sys_alloc()
+{
+    unsigned long *cip = reinterpret_cast<unsigned long *>(Pd::current->cell->cip);
+    trace(0, "CIP: %lx", *cip);
+
+    sys_finish<Sys_regs::SUCCESS>();
+}
+
 extern "C"
 void (*const syscall[])() =
 {
@@ -1327,6 +1383,8 @@ void (*const syscall[])() =
     &Ec::sys_assign_pci,
     &Ec::sys_assign_gsi,
     &Ec::sys_pd_ctrl,
+    &Ec::sys_create_cell,
+    &Ec::sys_alloc,
 };
 
 template void Ec::sys_finish<Sys_regs::COM_ABT>();
