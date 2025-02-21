@@ -7,23 +7,55 @@
 #pragma once 
 #include "config.hpp"
 #include "cpuset.hpp"
+#include "console.hpp"
 
-struct alignas(64) Cip_worker {
-    volatile unsigned short yield_flag{0};
-    unsigned short padding[3];
+struct Cip_worker {
+    volatile unsigned long yield_flag{0};
+    unsigned long padding[3];
+};
+
+struct Channel_info {
+    volatile unsigned short remainder{0};
+    volatile unsigned short limit{0};
+    unsigned int count{0};
 };
 
 struct alignas(64) Cip
 {
     alignas(64) struct Cip_worker worker_info[NUM_CPU];
-    volatile unsigned short remainder{0};
-    volatile unsigned short limit{0};
-    
+    struct Channel_info channel_info;
+
     /* Set of CPU cores currently allocated to this cell */
     Cpuset cores_current{0};
-    
+
+    /* Set of CPU cores reserved for this cell*/
+    Cpuset cores_reserved{0};
+
     /* Set of CPU cores recently added to this cell */
     Cpuset cores_new{0};
 
     Cip() = default;
+
+    void print()
+    {
+        Console::print("------<CPU resource info>------\n");
+        Console::print("# reserved CPU cores: %u\n", cores_reserved.count());
+        Console::print("Reserved CPU cores: ");
+        cores_reserved.for_each([&](long cpu)
+                                { Console::print("%ld ", cpu); });
+        Console::print("\n");
+        Console::print("# currently allocated CPU cores: %u\n", cores_current.count());
+        Console::print("Allocated CPU cores: ");
+        cores_current.for_each(([&](long cpu)
+                                { Console::print("%ld ", cpu); }));
+        Console::print("\n");
+        Console::print("------<Worker information>-------\n");
+        Console::print("# channels available: %u\n", channel_info.count);
+        Console::print("Pending yield requests for workers: ");
+        for (int i = 0; i < NUM_CPU; i++) {
+            if (worker_info[i].yield_flag)
+                Console::print("%u ", i);
+        }
+        Console::print("\n");
+    }
 };
