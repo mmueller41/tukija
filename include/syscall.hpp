@@ -359,4 +359,17 @@ class Sys_create_cell : public Sys_regs
         inline void cip(mword cip_pa) { ARG_3 = cip_pa; }
 };
 
+class Sys_cell_ctrl : public Sys_regs
+{
+    public:
+        enum Operation
+        {
+            UPDATE_CORES = 0
+        };
 
+        ALWAYS_INLINE
+        inline unsigned op() { return flags() & 0xf; }
+
+        ALWAYS_INLINE
+        inline unsigned long sel() { return ARG_1 >> 9; }
+};

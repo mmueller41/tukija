@@ -1364,6 +1364,38 @@ void Ec::sys_alloc()
     sys_finish<Sys_regs::SUCCESS>();
 }
 
+void Ec::sys_cell_ctrl()
+{
+    Sys_cell_ctrl *r = static_cast<Sys_cell_ctrl *>(current->sys_regs());
+
+    Capability cap = Space_obj::lookup(r->sel());
+    if (EXPECT_FALSE (cap.obj()->type() != Kobject::PD)) {
+        trace(TRACE_ERROR, "%s: Bad PD cap (%#lx) of type=%u", __func__, r->sel(), cap.obj()->type());
+        sys_finish<Sys_regs::BAD_CAP>();
+    }
+
+    Pd *pd = static_cast<Pd *>(cap.obj());
+    if (!pd->cell) {
+        trace(TRACE_ERROR, "%s: Attempt to control cell that has not been created, yet.", __func__);
+        sys_finish<Sys_regs::BAD_CAP>();
+    }
+
+    switch (r->op()) {
+        case Sys_cell_ctrl::UPDATE_CORES: 
+            /* TODO: call core allocator to update resource ownerships */
+            trace(0, "Updating core affinity for cell %lu:", r->sel());
+            Console::print("[");
+            pd->cell->cip->cores_reserved.print();
+            Console::print(" ]\n");
+            break;
+        default:
+            trace(TRACE_ERROR, "%s: Illegal operation: %u", __func__, r->op());
+            sys_finish<Sys_regs::BAD_PAR>();
+    }
+    
+    sys_finish<Sys_regs::SUCCESS>();
+}
+
 extern "C"
 void (*const syscall[])() =
 {
@@ -1385,6 +1417,7 @@ void (*const syscall[])() =
     &Ec::sys_pd_ctrl,
     &Ec::sys_create_cell,
     &Ec::sys_alloc,
+    &Ec::sys_cell_ctrl,
 };
 
 template void Ec::sys_finish<Sys_regs::COM_ABT>();
