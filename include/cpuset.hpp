@@ -24,6 +24,7 @@
 #include "atomic.hpp"
 #include "bits.hpp"
 #include "types.hpp"
+#include "console.hpp"
 
 class Cpuset
 {
@@ -98,5 +99,11 @@ class Cpuset
                 count += static_cast<unsigned>(popcount(raw[i]));
             }
             return count;
+        }
+
+        void print()
+        {
+            for_each([&](long cpu)
+                     { Console::print(" %ld", cpu); });
         }
 };
