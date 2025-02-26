@@ -8,11 +8,10 @@
 
 bool Cell::wake_core(unsigned int core)
 {
-    if (workers[core].sc && workers[core].sm) {
-        workers[core].sm->up();
-        return true;
-    }
-    return false;
+    bool woken = false;
+    workers[core].for_each([&](auto &worker)
+                           { worker.sm->up(); woken = true; });
+    return woken;
 }
 
 void Cell::update(Cpuset &alloc)
@@ -23,9 +22,9 @@ void Cell::update(Cpuset &alloc)
 unsigned Cell::yield_cores(Cpuset &cores, bool release)
 {
     unsigned reclaimed = 0;
-    cores.for_each([&](long cpu)
+    Cpuset::for_each(cores, [&](long cpu)
                    {
-        if (workers[cpu].sc) {
+        if (workers[cpu].head()) {
             /* Check whether the yield flag has already been set, if not set it */
             unsigned long expect = 0;
             bool will_sleep = !__atomic_compare_exchange_n(&(cip->worker_info[cpu].yield_flag), &expect, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
@@ -46,11 +45,27 @@ unsigned Cell::yield_cores(Cpuset &cores, bool release)
 
 void Cell::add_cores(Cpuset &cores)
 {
-    cores.for_each([&](long cpu)
+    Cpuset::for_each(cores, [&](long cpu)
                    {
         if (wake_core(static_cast<unsigned>(cpu))) {
             cip->cores_new.set(static_cast<unsigned>(cpu));
         } });
+}
+
+void Cell::return_core(unsigned int cpu)
+{
+    if (workers[cpu].head())
+    {
+        /* Check whether the yield flag has already been set, if not set it */
+        unsigned long expect = 0;
+        bool will_sleep = !__atomic_compare_exchange_n(&(cip->worker_info[cpu].yield_flag), &expect, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
+        if (will_sleep)
+            return;
+    }
+    else
+    {
+        /* TODO: directly return CPU core to core allocator */
+    }
 }
 
 void *Cell::operator new(size_t, Pd &pd)

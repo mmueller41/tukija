@@ -7,6 +7,7 @@
 #pragma once
 
 #include "cip.hpp"
+#include "queue.hpp"
 
 class Sc;
 class Sm;
@@ -16,12 +17,14 @@ struct Worker
 {
     Sc *sc;
     Sm *sm;
+    Worker *prev;
+    Worker *next;
 };
 
 class Cell
 {
     private:
-        struct Worker workers[NUM_CPU];
+        Queue<Worker> workers[NUM_CPU];
         Cpuset prefered_cores{0};
         unsigned prio;
 
@@ -42,6 +45,10 @@ class Cell
 
         /*** CPU Resource functions ***/
         
+        Queue<Worker> &workers_for_core(unsigned int core) {
+            return workers[core];
+        }
+
         /**
          * Add CPU cores to this cell
          * @param cores - the CPU core IDs to add
@@ -68,6 +75,12 @@ class Cell
         bool wake_core(unsigned int core);
 
         /**
+         * @brief Wake all CPU cores that were recently allocated but not woken up yet
+         * 
+         */
+        void wake_cores();
+
+        /**
          * Update prefered resource allocation
          * @param alloc - the new prefered allocation
          * @param offset - offset inside the CPU set 
@@ -80,6 +93,13 @@ class Cell
          * @return the number of reclaimed CPU cores
          */
         unsigned yield_cores(Cpuset &cores, bool release = false);
+
+        /**
+         * @brief Request the return of a CPU core to its owner
+         * 
+         * @param core - the ID of the CPU core to return to its owner
+         */
+        void return_core(unsigned int core);
 
         static void *operator new(size_t, Pd &pd);
 };
