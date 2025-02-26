@@ -35,6 +35,7 @@
 #include "vectors.hpp"
 #include "acpi.hpp"
 #include "ioapic.hpp"
+#include "core_allocator.hpp"
 
 template <Sys_regs::Status S, bool T>
 void Ec::sys_finish()
@@ -417,6 +418,7 @@ void Ec::sys_create_pd()
     Crd crd = r->crd();
     pd->del_crd (Pd::current, Crd (Crd::OBJ), crd);
 
+    pd->Space_mem::insert(pd->quota, (USER_ADDR - 32 * PAGE_SIZE), 5, Hpt::HPT_P, Buddy::ptr_to_phys(&FRAME_T));
     pd->delegate<Space_mem>(&Pd::kern, reinterpret_cast<Paddr>(&FRAME_T) >> PAGE_BITS, (USER_ADDR - 32 * PAGE_SIZE) >> PAGE_BITS, 5, 1);
 
     if (Cpu::hazard & HZD_OOM) {
@@ -1329,7 +1331,8 @@ void Ec::sys_create_cell()
         sys_finish<Sys_regs::BAD_PAR>();
     }
 
-    unsigned long *cip_hva = reinterpret_cast<unsigned long*>(Buddy::alloc(2, pd->quota, Buddy::NOFILL));
+    struct Cip *cip = new (Pd::kern) Cip();
+    unsigned long *cip_hva = reinterpret_cast<unsigned long*>(cip);
 
     r->cip(Buddy::ptr_to_phys(cip_hva));
 
@@ -1338,11 +1341,10 @@ void Ec::sys_create_cell()
         sys_finish<Sys_regs::QUO_OOM>();
     }
 
-    *cip_hva = 0xdeadbeef;
-
     Pd::current->Space_mem::insert(Pd::current->quota, reinterpret_cast<mword>(r->dst()), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
     pd->Space_mem::insert(pd->quota, (USER_ADDR - 36 * PAGE_SIZE), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
     //Pd::current->delegate<Space_mem>(pd, (USER_ADDR - 36 * PAGE_SIZE), r->dst(), 2, Hpt::HPT_W | Hpt::HPT_P, 1);
+
 
     pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
 
@@ -1351,15 +1353,33 @@ void Ec::sys_create_cell()
     trace(0, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
     trace(0, "Size of CIP is %lu", sizeof(struct Cip));
 
-    // pd->cell->cip->print();
+    //pd->cell->cip->print();
 
     sys_finish<Sys_regs::SUCCESS>();
 }
 
 void Ec::sys_alloc()
 {
-    unsigned long *cip = reinterpret_cast<unsigned long *>(Pd::current->cell->cip);
-    trace(0, "CIP: %lx", *cip);
+    Sys_alloc *r = static_cast<Sys_alloc*>(current->sys_regs());
+
+    Cell *cell = current->pd->cell;
+    if (!cell) {
+        trace(TRACE_ERROR, "%s: No cell defined for current PD.", __func__);
+        sys_finish<Sys_regs::BAD_HYP>();
+    }
+
+    switch (r->type()) {
+        case Resource::CPU: {
+            trace(0, "Trying to allocate %u CPU cores", r->quantity());
+            size_t cores = _core_alloc.alloc(r->quantity(), cell);
+            trace(0, "Allocated %lu cores", cores);
+            sys_finish<Sys_regs::QUO_OOM>();
+            //cell->wake_cores();
+            break;
+        } default:
+            trace(TRACE_ERROR, "%s: Resource type %lu not supported, yet.", __func__, r->type());
+            sys_finish<Sys_regs::BAD_PAR>();
+    }
 
     sys_finish<Sys_regs::SUCCESS>();
 }
