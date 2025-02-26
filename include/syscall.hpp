@@ -373,3 +373,13 @@ class Sys_cell_ctrl : public Sys_regs
         ALWAYS_INLINE
         inline unsigned long sel() { return ARG_1 >> 9; }
 };
+
+class Sys_alloc : public Sys_regs
+{
+    public:
+        ALWAYS_INLINE
+        inline unsigned int quantity() { return static_cast<unsigned int>(ARG_1 >> 9); }
+
+        ALWAYS_INLINE
+        inline unsigned long type() { return flags() & 0xf; }
+};
