@@ -9,7 +9,9 @@
 #include "cpuset.hpp"
 #include "console.hpp"
 
-struct Cip_worker {
+class Pd;
+struct Cip_worker
+{
     volatile unsigned long yield_flag{0};
     unsigned long padding[3];
 };
@@ -23,7 +25,7 @@ struct Channel_info {
 struct alignas(64) Cip
 {
     alignas(64) struct Cip_worker worker_info[NUM_CPU];
-    struct Channel_info channel_info;
+    struct Channel_info channel_info {};
 
     /* Set of CPU cores currently allocated to this cell */
     Cpuset cores_current{0};
@@ -41,13 +43,13 @@ struct alignas(64) Cip
         Console::print("------<CPU resource info>------\n");
         Console::print("# reserved CPU cores: %u\n", cores_reserved.count());
         Console::print("Reserved CPU cores: ");
-        cores_reserved.for_each([&](long cpu)
+        Cpuset::for_each(cores_reserved, [&](long cpu)
                                 { Console::print("%ld ", cpu); });
         Console::print("\n");
         Console::print("# currently allocated CPU cores: %u\n", cores_current.count());
         Console::print("Allocated CPU cores: ");
-        cores_current.for_each(([&](long cpu)
-                                { Console::print("%ld ", cpu); }));
+        Cpuset::for_each(cores_current, [&](long cpu)
+                                { Console::print("%ld ", cpu); });
         Console::print("\n");
         Console::print("------<Worker information>-------\n");
         Console::print("# channels available: %u\n", channel_info.count);
@@ -58,4 +60,6 @@ struct alignas(64) Cip
         }
         Console::print("\n");
     }
+
+    void *operator new(size_t, Pd &pd);
 };
