@@ -5,7 +5,7 @@
 void Tip_node::print()
 {
     Console::print("TIP: Dom %u - CPUs [ ", id);
-    cpus.for_each([&](long cpu)
+    Cpuset::for_each(cpus, [&](long cpu)
                     { Console::print("%2ld ", cpu); });
     Console::print("] ");
     for_each_mem([&](Tip_mem &mem)
