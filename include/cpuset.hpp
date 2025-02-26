@@ -77,8 +77,15 @@ class Cpuset
                                   s.value(i * CPUS_PER_VALUE));
         }
 
-        template <typename T>
-        void for_each (T const fn)
+        ALWAYS_INLINE
+        inline void subtract(Cpuset const &subtrahend)
+        {
+            for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
+                raw[i] &= ~subtrahend.raw[i];
+        }
+
+       /* template <typename T>
+        void for_each (T const &fn)
         {
             long cpu = 0;
             for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
@@ -90,7 +97,7 @@ class Cpuset
                     fn(cpu);
                 }
             }
-        }
+        }*/
 
         unsigned count()
         {
@@ -103,7 +110,22 @@ class Cpuset
 
         void print()
         {
-            for_each([&](long cpu)
+            Cpuset::for_each(*this, [&](long cpu)
                      { Console::print(" %ld", cpu); });
+        }
+
+        template <typename FUNC>
+        static void for_each(Cpuset &cpuset, FUNC const fn)
+        {
+            long cpu = 0;
+            for (unsigned i = 0; i < sizeof(cpuset.raw) / sizeof(cpuset.raw[0]); i++)
+            {
+                mword subset = cpuset.raw[i];
+                while ((cpu = bit_scan_forward(subset)) != -1)
+                {
+                    Atomic::clr_mask(subset, 1UL << cpuset.bit_cpu(static_cast<unsigned int>(cpu)));
+                    fn(cpu);
+                }
+            }
         }
 };

@@ -11,11 +11,14 @@
 #include "atomic.hpp"
 #include "types.hpp"
 #include "cell.hpp"
+#include "slab.hpp"
+#include "stdio.hpp"
+#include "queue.hpp"
 
 class Pd;
-class Sm;
+class Worker;
 
-class alignas(64) Resource
+class Resource
 {
     public:
         /* Types of resources, currently only CPUs (maybe contain accelerators in the future)*/
@@ -24,7 +27,7 @@ class alignas(64) Resource
             CPU = 0
         };
 
-    private:
+    protected:
         Type _type;
         uint16 _id; // Identifier for this resource, e.g. a CPU ID.
         Cell *_owner {}; // Rightful owner of this resource, maybe null at first.
@@ -35,20 +38,28 @@ class alignas(64) Resource
         inline bool occupy(Cell *pd) { return Atomic::cmp_swap(_current, static_cast<Cell*>(nullptr), pd); }
         inline void release() { Atomic::store(_current, static_cast<Cell *>(nullptr)); }
         inline void confer(Cell *new_owner) { _owner = new_owner; }
-        virtual void wake() = 0;
+        inline Cell *owner() { return _owner; }
+        inline bool borrowed() { return _owner != _current; }
+        inline Cell *current() { return _current; }
 };
 
 class alignas(64) Cpu_resource : public Resource
 {
     private:
-        Sm *_semaphore {}; // Used for pausing and waking the worker SC
+        Queue<Worker> *_workers{nullptr}; // Used for pausing and waking the worker SC
 
     public:
-        Cpu_resource(uint16 id) : Resource(Type::CPU, id) {}
+        Cpu_resource(uint16 id) : Resource(Type::CPU, id) { trace(0, "Added CPU resource for CPU %u", _id); }
 
-        bool occupy(Cell *pd, Sm *sm);
+        bool occupy(Cell *pd, Queue<Worker> *workers);
 
         void release();
 
-        void wake() override;
+        void wake();
+
+        void reclaim();
+
+        void *operator new(size_t, void *p) { return p; }
 };
+
+extern Cpu_resource cpu_resources[NUM_CPU];
