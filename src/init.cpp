@@ -32,6 +32,7 @@
 #include "multiboot.hpp"
 #include "multiboot2.hpp"
 
+#include "core_allocator.hpp"
 
 static inline unsigned apic_id()
 {
@@ -109,6 +110,7 @@ void init (mword magic, mword mbi)
 
     // Now we're ready to talk to the world
     Console::print ("\fNOVA Microhypervisor v%d-%07lx (%s): [%s] [%s]\n", CFG_VER, reinterpret_cast<mword>(&GIT_VER), ARCH, COMPILER_STRING, magic == Multiboot::MAGIC ? "MBI" : (magic==Multiboot2::MAGIC ? "MBI2" : ""));
+    _core_alloc.init();
 
     Idt::build();
     Gsi::setup();
@@ -120,6 +122,7 @@ void init (mword magic, mword mbi)
     Keyb::init();
     Console::print("Hypervisor Info Page at %p\n", Hip::hip());
     Console::print("Topology Information Pages have a length of %d bytes\n", Tip::tip()->length);
-    Console::print("Topology Info Pages reside at physical address %018lx\n", Hip::tip_phys_addr());
+    Console::print("Topology Info Pages reside at host virtual address %p\n", Tip::tip());
     Tip::tip()->print();
+    Console::print("CPU allocator has size of %lu bytes at %p - %lx", sizeof(Core_allocator), &_core_alloc, (reinterpret_cast<unsigned long>(&_core_alloc) + sizeof(_core_alloc)));
 }
