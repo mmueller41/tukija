@@ -36,6 +36,7 @@
 #include "svm.hpp"
 #include "tss.hpp"
 #include "vmx.hpp"
+#include "core_allocator.hpp"
 
 mword       Cpu::boot_lock;
 
@@ -406,11 +407,13 @@ void Cpu::init(bool resume)
            cr4 & Cpu::CR4_OSXSAVE ? " XS" : "",
            Lapic::x2apic ? " X2" : "");
 
-    if (!resume)
+    if (!resume) {
         Hip::add_cpu();
+        _core_alloc.add_cpu(Cpu::id);
+    }
 
-    if (Cpu::feature (Cpu::FEAT_RDTSCP))
-        Msr::write (Msr::IA32_TSC_AUX, Cpu::id);
+    if (Cpu::feature(Cpu::FEAT_RDTSCP))
+        Msr::write(Msr::IA32_TSC_AUX, Cpu::id);
 
     Cpu::mwait_hint = ~0U; /* invalid */
 
