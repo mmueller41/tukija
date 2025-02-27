@@ -218,6 +218,10 @@ Ec::~Ec()
         regs.vmcb_state->clear();
         Vmcb_state::destroy(regs.vmcb_state, pd->quota);
     }
+
+    if (pd->cell) {
+        pd->worker_cache.free(worker, pd->quota);
+    }
 }
 
 void Ec::handle_hazard (mword hzd, void (*func)())
@@ -471,10 +475,6 @@ void Ec::root_invoke()
     }
 
     // Map hypervisor information page
-    if (!Pd::current->delegate<Space_mem>(&Pd::kern, reinterpret_cast<Paddr>(&FRAME_T) >> PAGE_BITS, (USER_ADDR - 32*PAGE_SIZE) >> PAGE_BITS, 5, 1)) {
-        trace(TRACE_ERROR, "Failed to map TIP");
-    };
-    Hip::tip_virt((USER_ADDR - 32 * PAGE_SIZE));
     Pd::current->delegate<Space_mem>(&Pd::kern, reinterpret_cast<Paddr>(&FRAME_H) >> PAGE_BITS, (USER_ADDR - PAGE_SIZE) >> PAGE_BITS, 0, 1);
 
     Space_obj::insert_root (Pd::kern.quota, Pd::current);

@@ -40,6 +40,7 @@ class Utcb;
 class Sm;
 class Pt;
 class Sys_ec_ctrl;
+class Worker;
 
 class Ec : public Kobject, public Refcount, public Queue<Sc>
 {
@@ -59,6 +60,7 @@ class Ec : public Kobject, public Refcount, public Queue<Sc>
         Fpu *       fpu     { };
         Ec *        ec_xcpu { };
         Sc *        sc_xcpu { };
+        Worker *worker{};
 
         union {
             struct {
