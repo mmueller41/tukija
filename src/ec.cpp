@@ -477,6 +477,10 @@ void Ec::root_invoke()
     // Map hypervisor information page
     Pd::current->delegate<Space_mem>(&Pd::kern, reinterpret_cast<Paddr>(&FRAME_H) >> PAGE_BITS, (USER_ADDR - PAGE_SIZE) >> PAGE_BITS, 0, 1);
 
+    // Map topology information pages
+    Tip::tip()->delegate_to_userspace(*Pd::current);
+    Hip::tip_virt((USER_ADDR - 32 * PAGE_SIZE));
+
     Space_obj::insert_root (Pd::kern.quota, Pd::current);
     Space_obj::insert_root (Pd::kern.quota, Ec::current);
     Space_obj::insert_root (Pd::kern.quota, Sc::current);

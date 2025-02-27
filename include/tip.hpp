@@ -25,7 +25,8 @@
 
 struct Tip_node;
 
-struct Tip_mem 
+class Pd;
+struct Tip_mem
 {
     Paddr start;
     Paddr end;
@@ -210,4 +211,6 @@ class Tip
                 Console::print("\n");
             }
         }
+
+        void delegate_to_userspace(Pd &pd);
 };

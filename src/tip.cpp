@@ -28,5 +28,12 @@ void *Tip_node::alloc_dev()
     return &devices[num_devs++];
 }
 
+void Tip::delegate_to_userspace(Pd &pd)
+{
+    for (int f = 0, v=32; f < 8; f++, v--) {
+        pd.delegate<Space_mem>(&Pd::kern, (reinterpret_cast<Paddr>(&FRAME_T) >> PAGE_BITS) + f, (USER_ADDR - v * PAGE_SIZE) >> PAGE_BITS, 0, 1);
+    }
+}
+
 void *Tip_mem::operator new(size_t, Tip_node &node) { return node.alloc_mem(); }
 void *Tip_dev::operator new(size_t, Tip_node &node) { return node.alloc_dev(); }

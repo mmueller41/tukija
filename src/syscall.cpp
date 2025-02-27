@@ -418,8 +418,7 @@ void Ec::sys_create_pd()
     Crd crd = r->crd();
     pd->del_crd (Pd::current, Crd (Crd::OBJ), crd);
 
-    pd->Space_mem::insert(pd->quota, (USER_ADDR - 32 * PAGE_SIZE), 5, Hpt::HPT_P, Buddy::ptr_to_phys(&FRAME_T));
-    pd->delegate<Space_mem>(&Pd::kern, reinterpret_cast<Paddr>(&FRAME_T) >> PAGE_BITS, (USER_ADDR - 32 * PAGE_SIZE) >> PAGE_BITS, 5, 1);
+    Tip::tip()->delegate_to_userspace(*pd);
 
     if (Cpu::hazard & HZD_OOM) {
         Cpu::hazard &= ~HZD_OOM;
@@ -1343,8 +1342,6 @@ void Ec::sys_create_cell()
 
     Pd::current->Space_mem::insert(Pd::current->quota, reinterpret_cast<mword>(r->dst()), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
     pd->Space_mem::insert(pd->quota, (USER_ADDR - 36 * PAGE_SIZE), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
-    //Pd::current->delegate<Space_mem>(pd, (USER_ADDR - 36 * PAGE_SIZE), r->dst(), 2, Hpt::HPT_W | Hpt::HPT_P, 1);
-
 
     pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
 
@@ -1353,7 +1350,7 @@ void Ec::sys_create_cell()
     trace(0, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
     trace(0, "Size of CIP is %lu", sizeof(struct Cip));
 
-    //pd->cell->cip->print();
+    pd->cell->cip->print();
 
     sys_finish<Sys_regs::SUCCESS>();
 }
