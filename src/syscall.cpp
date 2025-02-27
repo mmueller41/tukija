@@ -475,6 +475,18 @@ void Ec::sys_create_ec()
         sys_finish<Sys_regs::BAD_CAP>();
     }
 
+    if (pd->cell) {
+        Worker *w = new (*pd) Worker();
+        if (!w) {
+            trace(TRACE_ERROR, "%s: Failed to allocate worker for EC (%#lx)", __func__, r->sel());
+            Ec::destroy(ec, *ec->pd);
+            sys_finish<Sys_regs::QUO_OOM>();
+        }
+        ec->worker = w;
+        pd->cell->workers_for_core(ec->cpu).enqueue(w);
+        trace(0, "%s Registered new worker %p for cell %p for CPU %u ", __func__, w, pd->cell, ec->cpu);
+    }
+
     sys_finish<Sys_regs::SUCCESS>();
 }
 
