@@ -19,6 +19,8 @@ struct Worker
     Sm *sm;
     Worker *prev;
     Worker *next;
+
+    void *operator new(size_t, Pd & pd);
 };
 
 class Cell

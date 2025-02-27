@@ -70,6 +70,13 @@ void Cell::return_core(unsigned int cpu)
 
 void *Cell::operator new(size_t, Pd &pd)
 {
-    size_t cell_size = align_up(sizeof(Cell), PAGE_SIZE);
-    return Buddy::alloc(static_cast<unsigned short>(cell_size / PAGE_SIZE), pd.quota, Buddy::NOFILL);
+    /*size_t cell_size = align_up(sizeof(Cell), PAGE_SIZE);
+    void *ptr = Buddy::alloc(static_cast<unsigned short>(cell_size / PAGE_SIZE), pd.quota, Buddy::NOFILL);
+    pd.Space_mem::insert(pd.quota, reinterpret_cast<mword>(ptr), 1, Hpt::HPT_P | Hpt::HPT_W, Buddy::ptr_to_phys(ptr));*/
+    return pd.cell_cache.alloc(pd.quota);
+}
+
+void *Worker::operator new(size_t, Pd &pd)
+{
+    return pd.worker_cache.alloc(pd.quota);
 }

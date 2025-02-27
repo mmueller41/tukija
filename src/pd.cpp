@@ -28,7 +28,7 @@
 #include "sm.hpp"
 
 INIT_PRIORITY (PRIO_SLAB)
-Slab_cache Pd::cache (sizeof (Pd), 128);
+Slab_cache Pd::cache (sizeof (Pd), 32);
 
 Pd *Pd::current;
 
@@ -36,7 +36,7 @@ INIT_PRIORITY (PRIO_SLAB)
 ALIGNED(32) Pd Pd::kern (&Pd::kern);
 ALIGNED(32) Pd Pd::root (&Pd::root, NUM_EXC, 0x1f);
 
-Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof (Pt), 32), mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), worker_cache(sizeof (Worker), 32)
+Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof (Pt), 32), mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), worker_cache(sizeof (Worker), 64), cell_cache(sizeof(Cell), 64)
 {
     hpt = Hptp (reinterpret_cast<mword>(&PDBR));
 
@@ -53,7 +53,7 @@ Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof
     Space_pio::addreg (own->quota, own->mdb_cache, 0, 1UL << 16, 7);
 }
 
-Pd::Pd (Pd *own, mword sel, mword a) : Kobject (PD, static_cast<Space_obj *>(own), sel, a, free, pre_free), pt_cache (sizeof (Pt), 32) , mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), worker_cache(sizeof(Worker), 32)
+Pd::Pd (Pd *own, mword sel, mword a) : Kobject (PD, static_cast<Space_obj *>(own), sel, a, free, pre_free), pt_cache (sizeof (Pt), 32) , mdb_cache (sizeof (Mdb), 16), sm_cache (sizeof (Sm), 32), sc_cache (sizeof (Sc), 32), ec_cache (sizeof (Ec), 32), fpu_cache (sizeof (Fpu), Fpu::alignment), worker_cache(sizeof(Worker), 32), cell_cache(sizeof(Cell), 64)
 {
     if (this == &Pd::root) {
         bool res = Quota::init.transfer_to(quota, Quota::init.limit());
@@ -469,12 +469,18 @@ Pd::~Pd()
         if (Hip::cpu_online (cpu))
             Space_mem::loc[cpu].clear(quota, Space_mem::hpt.dest_loc, Space_mem::hpt.iter_loc_lev);
 
+    if (cell) {
+        cell_cache.free(cell, quota);
+    }
+
     pt_cache.free(quota);
     sm_cache.free(quota);
     sc_cache.free(quota);
     ec_cache.free(quota);
     fpu_cache.free(quota);
     mdb_cache.free(quota);
+    cell_cache.free(quota);
+    worker_cache.free(quota);
 }
 
 extern "C" int __cxa_atexit(void (*)(void *), void *, void *) { return 0; }
