@@ -477,14 +477,16 @@ void Ec::sys_create_ec()
 
     if (pd->cell) {
         Worker *w = new (*pd) Worker();
-        if (!w) {
+        Sm *sm = new (*pd) Sm(pd, 0, 0);
+        if (!w || !sm)
+        {
             trace(TRACE_ERROR, "%s: Failed to allocate worker for EC (%#lx)", __func__, r->sel());
             Ec::destroy(ec, *ec->pd);
             sys_finish<Sys_regs::QUO_OOM>();
         }
+        w->sm = sm;
         ec->worker = w;
         pd->cell->workers_for_core(ec->cpu).enqueue(w);
-        trace(0, "%s Registered new worker %p for cell %p for CPU %u ", __func__, w, pd->cell, ec->cpu);
     }
 
     sys_finish<Sys_regs::SUCCESS>();
@@ -532,6 +534,10 @@ void Ec::sys_create_sc()
         trace (TRACE_ERROR, "%s: Non-NULL CAP (%#lx)", __func__, r->sel());
         delete sc;
         sys_finish<Sys_regs::BAD_CAP>();
+    }
+
+    if (ec->worker) {
+        ec->worker->sc = sc;
     }
 
     sc->remote_enqueue();
