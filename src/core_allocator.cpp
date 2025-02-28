@@ -35,6 +35,19 @@ void Core_allocator::release(unsigned int cpu)
 {
     Cpu_resource *cpu_resource = &_resources[cpu];
 
+    /* When a new cell is created, it may create a pool of worker threads for all 
+     * available CPUs in its habitat. However, this cannot be done by allocating the 
+     * necessary CPUs first, because the allocation already assumes the worker threads exists.
+     * Thus, we get into the situation where we have worker threads on a non-allocated CPU
+     * after starting a cell. The cell is required to call this function, but as we
+     * do not have the CPU allocated we must block the workers instead of using the 
+     * release method of the CPU resource object, as it will hold the wrong information.
+     */
+    if (cpu_resource->current() != Pd::current) {
+        Pd::current->cell->block_workers_on(cpu);
+        return;
+    }
+
     cpu_resource->release();
 }
 
