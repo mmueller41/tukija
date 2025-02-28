@@ -25,6 +25,8 @@ void Cpu_resource::release()
 {
     Resource::release();
 
+    _current->cip->cores_current.clr(_id);
+
     _workers->for_each([&](auto &worker)
                        {
         Sm *sm = worker.sm;
