@@ -103,5 +103,12 @@ class Cell
          */
         void return_core(unsigned int core);
 
+        /**
+         * @brief Block all workers registered for a given CPU core
+         * 
+         * @param core - to block all workers of this cell on
+         */
+        void block_workers_on(unsigned int core);
+
         static void *operator new(size_t, Pd &pd);
 };

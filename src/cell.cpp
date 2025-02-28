@@ -68,6 +68,14 @@ void Cell::return_core(unsigned int cpu)
     }
 }
 
+void Cell::block_workers_on(unsigned int core)
+{
+    workers[core].for_each([&](auto &worker)
+                       {
+        Sm *sm = worker.sm;
+        sm->dn(false, 0, Ec::current, true); });
+}
+
 void *Cell::operator new(size_t, Pd &pd)
 {
     /*size_t cell_size = align_up(sizeof(Cell), PAGE_SIZE);
