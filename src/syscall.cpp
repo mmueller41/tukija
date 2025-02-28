@@ -1440,7 +1440,7 @@ void Ec::sys_release()
             if (r->type() == Resource::CPU) {
                 trace(0, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
             }
-            _core_alloc.release(cell, Cpu::id);
+            _core_alloc.release(Cpu::id);
             break;
         }
         case Sys_release::RETURN: {

@@ -31,7 +31,7 @@ void Core_allocator::init() {
     Pd::root.Space_mem::insert(Pd::kern.quota, reinterpret_cast<mword>(_resources), 2, Hpt::HPT_P | Hpt::HPT_NX | Hpt::HPT_W, Buddy::ptr_to_phys(_resources));
 }
 
-void Core_allocator::release(Cell *cell, unsigned int cpu)
+void Core_allocator::release(unsigned int cpu)
 {
     Cpu_resource *cpu_resource = &_resources[cpu];
 
