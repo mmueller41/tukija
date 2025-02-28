@@ -43,7 +43,7 @@ void Core_allocator::release(unsigned int cpu)
      * do not have the CPU allocated we must block the workers instead of using the 
      * release method of the CPU resource object, as it will hold the wrong information.
      */
-    if (cpu_resource->current() != Pd::current) {
+    if (cpu_resource->current() != Pd::current->cell) {
         Pd::current->cell->block_workers_on(cpu);
         return;
     }
