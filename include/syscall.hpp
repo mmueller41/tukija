@@ -383,3 +383,23 @@ class Sys_alloc : public Sys_regs
         ALWAYS_INLINE
         inline unsigned long type() { return flags() & 0xf; }
 };
+
+class Sys_release : public Sys_regs
+{
+    public:
+        enum Operation
+        {
+            RELEASE = 0,
+            RETURN = 1,
+        };
+
+        ALWAYS_INLINE
+        inline unsigned long op() {
+            return flags() & 0xf;
+        }
+
+        ALWAYS_INLINE
+        inline unsigned long type() {
+            return ARG_1 >> 9;
+        }
+};

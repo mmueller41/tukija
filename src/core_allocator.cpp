@@ -22,7 +22,6 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
             }
         });
 
-    _resources[14].reclaim();
     Console::print("Allocating %lu cores for Cell %p", quantity, cell);
     return cores_allocated;
 }
@@ -30,6 +29,13 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
 void Core_allocator::init() {
     _resources = static_cast<Cpu_resource*>(Buddy::alloc(2, Pd::kern.quota, Buddy::FILL_0));
     Pd::root.Space_mem::insert(Pd::kern.quota, reinterpret_cast<mword>(_resources), 2, Hpt::HPT_P | Hpt::HPT_NX | Hpt::HPT_W, Buddy::ptr_to_phys(_resources));
+}
+
+void Core_allocator::release(Cell *cell, unsigned int cpu)
+{
+    Cpu_resource *cpu_resource = &_resources[cpu];
+
+    cpu_resource->release();
 }
 
 Core_allocator _core_alloc;

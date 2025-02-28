@@ -36,6 +36,7 @@ class Core_allocator
         Core_allocator() = default;
 
         size_t alloc(size_t quantity, Cell *cell);
+        void release(Cell *cell, unsigned int cpu);
 
         void init();
 

@@ -1425,6 +1425,38 @@ void Ec::sys_cell_ctrl()
     sys_finish<Sys_regs::SUCCESS>();
 }
 
+void Ec::sys_release()
+{
+    Sys_release *r = static_cast<Sys_release *>(current->sys_regs());
+
+    Cell *cell = current->pd->cell;
+    if (!cell) {
+        trace(TRACE_ERROR, "%s: Release attempt from non-cell component.", __func__);
+        sys_finish<Sys_regs::BAD_CPU>();
+    }
+
+    switch (r->op()) {
+        case Sys_release::RELEASE: {
+            if (r->type() == Resource::CPU) {
+                trace(0, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
+            }
+            _core_alloc.release(cell, Cpu::id);
+            break;
+        }
+        case Sys_release::RETURN: {
+            if (r->type() == Resource::CPU) {
+                trace(0, "Cell %p: Returning CPU %u ", cell, Cpu::id);
+            }
+            break;
+        }
+        default: {
+            trace(TRACE_ERROR, "%s: Unsupported resource type", __func__);
+            sys_finish<Sys_regs::BAD_PAR>();
+        }
+    }
+    sys_finish<Sys_regs::SUCCESS>();
+}
+
 extern "C"
 void (*const syscall[])() =
 {
@@ -1447,6 +1479,7 @@ void (*const syscall[])() =
     &Ec::sys_create_cell,
     &Ec::sys_alloc,
     &Ec::sys_cell_ctrl,
+    &Ec::sys_release,
 };
 
 template void Ec::sys_finish<Sys_regs::COM_ABT>();
