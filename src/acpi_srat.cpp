@@ -18,6 +18,7 @@
 #include "tip.hpp"
 #include "config.hpp"
 #include "stdio.hpp"
+#include "lapic.hpp"
 
 void Acpi_table_srat::parse() const
 {
@@ -38,17 +39,18 @@ void Acpi_table_srat::parse_lapic(Affinity const *ptr)
     Lapic const *p = static_cast<Lapic const *>(ptr);
     Tip *tip = Tip::tip();
 
-    if (p->flags & 1) {
+    if (p->enabled) {
         uint32 numa_id = (p->domain_lo |
                           static_cast<uint32>(p->domain_hi[0]) << 8 |
                           static_cast<uint32>(p->domain_hi[1]) << 16 |
                           static_cast<uint32>(p->domain_hi[2]) << 24);
 
+        uint16 cpu_id = ::Lapic::lookup(p->apic_id);
 
         Tip::check_and_add(*tip, numa_id);
 
-        trace(TRACE_ACPI, "SRAT: CPU %u - Dom %u", p->apic_id, numa_id);
-        Tip::add_cpu(*tip, p->apic_id, numa_id);
+        trace(TRACE_ACPI, "SRAT: LAPIC %u CPU %u - Dom %u", p->apic_id, cpu_id, numa_id);
+        Tip::add_cpu(*tip, cpu_id, numa_id);
     }
 }
 
@@ -83,12 +85,16 @@ void Acpi_table_srat::parse_x2apic(Affinity const *ptr)
     uint32 numa_id = apic->domain;
 
     Tip *tip = Tip::tip();
-    
-    trace(TRACE_ACPI, "SRAT: CPU %u - Dom %u", apic->apic_id, numa_id);
 
-    Tip::check_and_add(*tip, numa_id);
+    if (apic->enabled) {
+        uint16 cpu_id = ::Lapic::lookup(apic->apic_id);
 
-    Tip::add_cpu(*tip, apic->apic_id, numa_id);
+        trace(TRACE_ACPI, "SRAT: LAPIC %u CPU %u - Dom %u", apic->apic_id, cpu_id, numa_id);
+
+        Tip::check_and_add(*tip, numa_id);
+
+        Tip::add_cpu(*tip, cpu_id, numa_id);
+    }
 }
 
 void Acpi_table_srat::parse_gias(Affinity const *ptr)
@@ -100,8 +106,8 @@ void Acpi_table_srat::parse_gias(Affinity const *ptr)
 
     Tip::check_and_add(*tip, numa_id);
 
-    if (!gias->flag_enabled)
-        return;
+    //if (!gias->flag_enabled)
+    //    return;
 
     switch (gias->dev_handle_type)
     {

@@ -41,7 +41,8 @@ class Acpi_table_srat : public Acpi_table
         struct Lapic : public Affinity {
             uint8 domain_lo;
             uint8 apic_id;
-            uint32 flags;
+            uint32 enabled : 1,
+                reserved: 31;
             uint8 local_sapic_eid;
             uint8 domain_hi[3];
             uint32 clock_domain;
@@ -63,7 +64,8 @@ class Acpi_table_srat : public Acpi_table
             uint16 reserved;
             uint32 domain;
             uint32 apic_id;
-            uint32 flags;
+            uint32 enabled : 1,
+                flags : 31;
             uint32 clock_domain;
             uint32 reserved2;
         };
