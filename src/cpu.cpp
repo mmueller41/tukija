@@ -394,8 +394,8 @@ void Cpu::init(bool resume)
         Cpu::defeature (Cpu::FEAT_MWAIT_IRQ);
     }
 
-    trace (TRACE_CPU, "CORE:%02x:%02x:%x %x:%x:%x:%x [%x] %s%.48s %s%s%s%s%s",
-           package[Cpu::id], core[Cpu::id], thread[Cpu::id], family[Cpu::id],
+    trace (TRACE_CPU, "CORE:%02u:%02u:%02u:%u %x:%x:%x:%x [%x] %s%.48s %s%s%s%s%s",
+           package[Cpu::id], Tip::lookup(Cpu::id).id, core[Cpu::id], thread[Cpu::id], family[Cpu::id],
            model[Cpu::id], stepping[Cpu::id], platform[Cpu::id], patch[Cpu::id],
            core_type[Cpu::id] == 0x00 ? ""   :
            core_type[Cpu::id] == Cpu::INTEL_CORE ? "P " :
