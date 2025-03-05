@@ -14,6 +14,11 @@ bool Cell::wake_core(unsigned int core)
     return woken;
 }
 
+void Cell::wake_cores()
+{
+    add_cores(cip->cores_new);
+}
+
 void Cell::update(Cpuset &alloc)
 {
     prefered_cores.merge(alloc);
@@ -48,7 +53,7 @@ void Cell::add_cores(Cpuset &cores)
     Cpuset::for_each(cores, [&](long cpu)
                    {
         if (wake_core(static_cast<unsigned>(cpu))) {
-            cip->cores_new.set(static_cast<unsigned>(cpu));
+            cip->cores_current.set(static_cast<unsigned>(cpu));
         } });
 }
 
