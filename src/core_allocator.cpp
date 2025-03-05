@@ -22,7 +22,6 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
             }
         });
 
-    Console::print("Allocating %lu cores for Cell %p", quantity, cell);
     return cores_allocated;
 }
 
@@ -49,6 +48,11 @@ void Core_allocator::release(unsigned int cpu)
     }
 
     cpu_resource->release();
+}
+
+void Core_allocator::return_core(unsigned int cpu)
+{
+    _resources[cpu].return_core();
 }
 
 Core_allocator _core_alloc;

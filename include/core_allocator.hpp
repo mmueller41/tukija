@@ -38,6 +38,8 @@ class Core_allocator
         size_t alloc(size_t quantity, Cell *cell);
         void release(unsigned int cpu);
 
+        void return_core(unsigned int cpu);
+
         void init();
 
         void add_cpu([[maybe_unused]] unsigned int cpu) {

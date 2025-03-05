@@ -1385,11 +1385,10 @@ void Ec::sys_alloc()
 
     switch (r->type()) {
         case Resource::CPU: {
-            trace(0, "Trying to allocate %u CPU cores", r->quantity());
             size_t cores = _core_alloc.alloc(r->quantity(), cell);
-            trace(0, "Allocated %lu cores", cores);
-            sys_finish<Sys_regs::QUO_OOM>();
-            //cell->wake_cores();
+            if (!cores)
+                sys_finish<Sys_regs::QUO_OOM>();
+            cell->wake_cores();
             break;
         } default:
             trace(TRACE_ERROR, "%s: Resource type %lu not supported, yet.", __func__, r->type());
@@ -1444,14 +1443,15 @@ void Ec::sys_release()
     switch (r->op()) {
         case Sys_release::RELEASE: {
             if (r->type() == Resource::CPU) {
-                trace(0, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
+                //trace(0, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
+                _core_alloc.release(Cpu::id);
             }
-            _core_alloc.release(Cpu::id);
             break;
         }
         case Sys_release::RETURN: {
             if (r->type() == Resource::CPU) {
-                trace(0, "Cell %p: Returning CPU %u ", cell, Cpu::id);
+                //trace(0, "Cell %p: Returning CPU %u ", cell, Cpu::id);
+                _core_alloc.return_core(Cpu::id);
             }
             break;
         }
