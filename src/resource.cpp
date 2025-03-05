@@ -23,7 +23,6 @@ bool Cpu_resource::occupy(Cell *pd, Queue<Worker> *workers)
 
 void Cpu_resource::release()
 {
-    Resource::release();
 
     _current->cip->cores_current.clr(_id);
 
@@ -31,6 +30,8 @@ void Cpu_resource::release()
                        {
         Sm *sm = worker.sm;
         sm->dn(false, 0, Ec::current, true); });
+    
+    Resource::release();
 }
 
 void Cpu_resource::wake()
@@ -42,9 +43,23 @@ void Cpu_resource::wake()
 
 void Cpu_resource::reclaim()
 {
-    trace(0, "Reclaiming CPU core %u", _id);
-    _current->return_core(_id);
+    //trace(0, "Reclaiming CPU core %u", _id);
+    current()->return_core(_id);
 }
 
+void Cpu_resource::return_core()
+{
+    _current->cip->cores_current.clr(_id);
+
+    current()->block_workers_on(_id);
+
+    if (__atomic_exchange_n(&_current, _owner, __ATOMIC_SEQ_CST) != Pd::current->cell) {
+    }
+    if (_owner) {
+        _workers = &current()->workers_for_core(_id);
+
+        wake();
+    }
+}
 
 //alignas(64) Cpu_resource cpu_resources[NUM_CPU];
