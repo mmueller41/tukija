@@ -124,7 +124,7 @@ class Cpuset
                 while ((cpu = bit_scan_forward(subset)) != -1)
                 {
                     Atomic::clr_mask(subset, 1UL << cpuset.bit_cpu(static_cast<unsigned int>(cpu)));
-                    fn(cpu);
+                    fn((cpu+i*CPUS_PER_VALUE));
                 }
             }
         }
