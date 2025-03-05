@@ -99,6 +99,7 @@ class Tip
     
     public:
         uint16_t length{8};
+        uint32 cpu_to_node[NUM_CPU];
         Tip_node nodes[];
 
         ALWAYS_INLINE
@@ -131,6 +132,20 @@ class Tip
 
             fn(*n);
         }
+        
+        template <typename T>
+        static void for_each_node(Tip &tip, T const fn)
+        {
+            mword const node_cnt = (reinterpret_cast<mword>(&tip.nodes) + tip.length - reinterpret_cast<mword>(tip.nodes)) / sizeof(Tip_node);
+
+            Tip_node *n = tip.nodes;
+
+            for (unsigned i = 0; i < node_cnt; i++) {
+                n = tip.nodes + i;
+
+                fn(*n);
+            }
+        }
 
         static void add_cpu(Tip &tip, unsigned cpu_id, uint32 node_id)
         {
@@ -138,6 +153,7 @@ class Tip
                 tip, [&](Tip_node &node)
                 { node.cpus.set(cpu_id); },
                 node_id);
+            tip.cpu_to_node[cpu_id] = node_id;
         }
 
         static void add_mem(Tip &tip, uint32 node_id, Paddr base, Paddr size)
@@ -210,6 +226,13 @@ class Tip
                 n->print();
                 Console::print("\n");
             }
+        }
+
+        ALWAYS_INLINE
+        inline static Tip_node &lookup(cpu_t cpu)
+        {
+            uint32 node_id = Tip::tip()->cpu_to_node[cpu];
+            return Tip::tip()->nodes[node_id];
         }
 
         void delegate_to_userspace(Pd &pd);
