@@ -31,16 +31,16 @@ class Resource
         Type _type;
         uint16 _id; // Identifier for this resource, e.g. a CPU ID.
         Cell *_owner {}; // Rightful owner of this resource, maybe null at first.
-        Cell *_current{}; // Current owner of this resource, if not the original owner.
+        Cell volatile *_current{}; // Current owner of this resource, if not the original owner.
 
     public:
         Resource(Type type, uint16 id) : _type(type), _id(id) {}
-        inline bool occupy(Cell *pd) { return Atomic::cmp_swap(_current, static_cast<Cell*>(nullptr), pd); }
-        inline void release() { Atomic::store(_current, static_cast<Cell *>(nullptr)); }
+        inline bool occupy(Cell *pd) { return __atomic_compare_exchange_n(&_current, &_current, pd, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED); }
+        inline void release() { __atomic_store_n(&_current, nullptr, __ATOMIC_SEQ_CST); }
         inline void confer(Cell *new_owner) { _owner = new_owner; }
         inline Cell *owner() { return _owner; }
         inline bool borrowed() { return _owner != _current; }
-        inline Cell *current() { return _current; }
+        inline Cell *current() { return const_cast<Cell*>(_current); }
 };
 
 class alignas(64) Cpu_resource : public Resource
@@ -49,7 +49,7 @@ class alignas(64) Cpu_resource : public Resource
         Queue<Worker> *_workers{nullptr}; // Used for pausing and waking the worker SC
 
     public:
-        Cpu_resource(uint16 id) : Resource(Type::CPU, id) { trace(0, "Added CPU resource for CPU %u", _id); }
+        Cpu_resource(uint16 id) : Resource(Type::CPU, id) { }
 
         bool occupy(Cell *pd, Queue<Worker> *workers);
 
@@ -58,6 +58,8 @@ class alignas(64) Cpu_resource : public Resource
         void wake();
 
         void reclaim();
+
+        void return_core();
 
         void *operator new(size_t, void *p) { return p; }
 };
