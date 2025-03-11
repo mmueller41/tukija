@@ -22,6 +22,7 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
             if (try_alloc(cell, cpu))
             {
                 cores_allocated++;
+                _idle_cpus.clr(static_cast<unsigned>(cpu));
             }
         },
         [&]() -> bool
@@ -53,6 +54,7 @@ void Core_allocator::release(unsigned int cpu)
     }
 
     cpu_resource->release();
+    _idle_cpus.set(cpu);
 }
 
 void Core_allocator::return_core(unsigned int cpu)

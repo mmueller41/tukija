@@ -31,6 +31,7 @@ class Core_allocator
 {
     private:
         alignas(64) Cpu_resource *_resources{nullptr};
+        alignas(64) Cpuset _idle_cpus{0};
 
         bool try_alloc(Cell *cell, long cpu);
 
@@ -46,6 +47,7 @@ class Core_allocator
 
         void add_cpu([[maybe_unused]] unsigned int cpu) {
             new (&_resources[cpu]) Cpu_resource(static_cast<uint16>(cpu));
+            _idle_cpus.set(cpu);
         }
 };
 
