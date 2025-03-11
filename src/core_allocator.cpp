@@ -14,9 +14,6 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
         free_affiliated_cores,
         [&](long cpu)
         {
-            if (cores_allocated == quantity)
-                return;
-
             if (_resources[cpu].occupy(cell, &cell->workers_for_core(static_cast<unsigned>(cpu))))
             {
                 cores_allocated++;
