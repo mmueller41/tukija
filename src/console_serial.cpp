@@ -34,7 +34,7 @@ Console_serial::Console_serial()
     char *mem = static_cast<char *>(Hpt::remap (Pd::kern.quota, 0));
     if (!(base = *reinterpret_cast<uint16 *>(mem + 0x400)) &&
         !(base = *reinterpret_cast<uint16 *>(mem + 0x402)))
-        base = 0x3f8;
+        base = 0x2f8;
 
     reenable();
 
