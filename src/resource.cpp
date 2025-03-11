@@ -26,11 +26,8 @@ void Cpu_resource::release()
 
     _current->cip->cores_current.clr(_id);
 
-    _workers->for_each([&](auto &worker)
-                       {
-        Sm *sm = worker.sm;
-        sm->dn(false, 0, Ec::current, true); });
-    
+    const_cast<Cell*>(_current)->block_workers_on(_id);
+
     Resource::release();
 }
 

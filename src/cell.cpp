@@ -78,6 +78,7 @@ void Cell::block_workers_on(unsigned int core)
     workers[core].for_each([&](auto &worker)
                        {
         Sm *sm = worker.sm;
+        Ec::current->cont = Ec::sys_finish<Sys_regs::SUCCESS, true>;
         sm->dn(false, 0, Ec::current, true); });
 }
 
