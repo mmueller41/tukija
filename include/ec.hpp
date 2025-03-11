@@ -47,6 +47,7 @@ class Ec : public Kobject, public Refcount, public Queue<Sc>
     friend class Queue<Ec>;
     friend class Sc;
     friend class Pt;
+    friend class Cell;
 
     private:
         void        (*cont)() ALIGNED (16);
