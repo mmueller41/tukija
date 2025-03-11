@@ -25,6 +25,7 @@
 #include "bits.hpp"
 #include "types.hpp"
 #include "console.hpp"
+#include "stdio.hpp"
 
 class Cpuset
 {
@@ -47,6 +48,11 @@ class Cpuset
         ALWAYS_INLINE
         inline mword bit_cpu(unsigned const cpu) const {
             return cpu % CPUS_PER_VALUE; }
+
+        ALWAYS_INLINE
+        inline mword values() const {
+            return sizeof(raw) / sizeof(raw[0]);
+        }
 
     public:
 
@@ -125,6 +131,20 @@ class Cpuset
                 {
                     Atomic::clr_mask(subset, 1UL << cpuset.bit_cpu(static_cast<unsigned int>(cpu)));
                     fn((cpu+i*CPUS_PER_VALUE));
+                }
+            }
+        }
+
+        template <typename FUNC, typename C>
+        static void for_each_until(Cpuset &cpuset, FUNC const fn, C const cond)
+        {
+            long cpu = 0;
+            for (unsigned i = 0; i < cpuset.values() && !cond(); i++)
+            {
+                mword subset = cpuset.raw[i];
+                while ((cpu = bit_scan_forward(subset)) != -1 && !cond()) {
+                    Atomic::clr_mask(subset, 1UL << cpuset.bit_cpu(static_cast<unsigned>(cpu)));
+                    fn((cpu + i * CPUS_PER_VALUE));
                 }
             }
         }
