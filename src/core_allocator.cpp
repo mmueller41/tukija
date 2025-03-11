@@ -2,6 +2,11 @@
 #include "stdio.hpp"
 #include "pd.hpp"
 
+bool Core_allocator::try_alloc(Cell *cell, long cpu)
+{
+    return _resources[cpu].occupy(cell, &cell->workers_for_core(static_cast<unsigned>(cpu)));
+}
+
 size_t Core_allocator::alloc(size_t quantity, Cell *cell)
 {
     size_t cores_allocated = 0;
@@ -14,7 +19,7 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
         free_affiliated_cores,
         [&](long cpu)
         {
-            if (_resources[cpu].occupy(cell, &cell->workers_for_core(static_cast<unsigned>(cpu))))
+            if (try_alloc(cell, cpu))
             {
                 cores_allocated++;
             }

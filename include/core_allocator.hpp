@@ -32,6 +32,8 @@ class Core_allocator
     private:
         alignas(64) Cpu_resource *_resources{nullptr};
 
+        bool try_alloc(Cell *cell, long cpu);
+
     public:
         Core_allocator() = default;
 
