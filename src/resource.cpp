@@ -23,12 +23,12 @@ bool Cpu_resource::occupy(Cell *pd, Queue<Worker> *workers)
 
 void Cpu_resource::release()
 {
-
-    _current->cip->cores_current.clr(_id);
-
-    const_cast<Cell*>(_current)->block_workers_on(_id);
-
+    Cell *curr = const_cast<Cell*>(_current);
+    curr->cip->cores_current.clr(_id);
     Resource::release();
+
+    curr->block_workers_on(_id);
+
 }
 
 void Cpu_resource::wake()
