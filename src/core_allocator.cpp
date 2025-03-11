@@ -10,17 +10,20 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
     free_affiliated_cores.merge(cell->cip->cores_reserved);
     free_affiliated_cores.subtract(cell->cip->cores_current);
 
-    Cpuset::for_each(free_affiliated_cores,
+    Cpuset::for_each_until(
+        free_affiliated_cores,
         [&](long cpu)
         {
-            if (quantity == 0)
+            if (cores_allocated == quantity)
                 return;
+
             if (_resources[cpu].occupy(cell, &cell->workers_for_core(static_cast<unsigned>(cpu))))
             {
                 cores_allocated++;
-                quantity--;
             }
-        });
+        },
+        [&]() -> bool
+        { return cores_allocated == quantity; });
 
     return cores_allocated;
 }
