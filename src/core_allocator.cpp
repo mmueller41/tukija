@@ -12,6 +12,8 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
     size_t cores_allocated = 0;
     Cpuset free_affiliated_cores{0};
 
+    cell->cip->cores_new.clear();
+
     free_affiliated_cores.merge(cell->cip->cores_reserved);
     free_affiliated_cores.subtract(cell->cip->cores_current);
 
@@ -22,7 +24,36 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
             if (try_alloc(cell, cpu))
             {
                 cores_allocated++;
-                _idle_cpus.clr(static_cast<unsigned>(cpu));
+            }
+        },
+        [&]() -> bool
+        { return cores_allocated == quantity; });
+
+    if (cores_allocated == quantity)
+        return cores_allocated;
+
+    //trace(0, "Need to borrow %lu cores", quantity - cores_allocated);
+    for (unsigned cpu = 0; cpu < _cpu_count; cpu++)
+    {
+        //trace(0, "Trying to allocate CPU %u ", cpu);
+        if (cores_allocated == quantity)
+            break;
+        if (try_alloc(cell, cpu))
+        {
+            cores_allocated++;
+        }
+    }
+
+    if (cores_allocated == quantity)
+        return cores_allocated;
+
+    Cpuset::for_each_until(
+        cell->cip->cores_reserved,
+        [&](long cpu)
+        {
+            if (_resources[cpu].borrowed()) {
+                _resources[cpu].reclaim();
+                cores_allocated++;
             }
         },
         [&]() -> bool
@@ -54,12 +85,32 @@ void Core_allocator::release(unsigned int cpu)
     }
 
     cpu_resource->release();
-    _idle_cpus.set(cpu);
 }
 
 void Core_allocator::return_core(unsigned int cpu)
 {
     _resources[cpu].return_core();
+}
+
+void Core_allocator::confer(Cell *new_owner) {
+    Cpuset::for_each(
+        new_owner->cip->cores_reserved,
+        [&](long cpu)
+        {
+            _resources[cpu].confer(new_owner);
+        });
+}
+
+void Core_allocator::transfer([[maybe_unused]] Cell *new_owner, unsigned cpu) {
+    if (_resources[cpu].borrowed()) {
+        _resources[cpu].reclaim();
+    } else {
+        trace(0, "Occupying CPU %u ", cpu);
+        if (!_resources[cpu].occupy(new_owner, &new_owner->workers_for_core(cpu)))
+            trace(TRACE_ERROR, "Failed to transfer main CPU %u ", cpu);
+    }
+    new_owner->cip->cores_new.clr(cpu);
+    new_owner->cip->cores_current.set(cpu);
 }
 
 Core_allocator _core_alloc;

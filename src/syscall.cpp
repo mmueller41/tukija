@@ -477,6 +477,7 @@ void Ec::sys_create_ec()
 
     if (pd->cell) {
         Worker *w = new (*pd) Worker();
+        //trace(0, "Created new worker on CPU %u", ec->cpu);
         Sm *sm = new (*pd) Sm(pd, 0, 0);
         if (!w || !sm)
         {
@@ -1083,11 +1084,11 @@ void Ec::sys_sm_ctrl()
 
     switch (r->op()) {
 
-        case 0:
+        case Sys_sm_ctrl::Sem_op::UP:
             sm->submit();
             break;
 
-        case 1:
+        case Sys_sm_ctrl::Sem_op::DOWN:
             if (sm->space == static_cast<Space_obj *>(&Pd::kern)) {
                 Gsi::unmask (static_cast<unsigned>(sm->node_base - NUM_CPU));
                 if (sm->is_signal())
@@ -1416,7 +1417,8 @@ void Ec::sys_cell_ctrl()
 
     switch (r->op()) {
         case Sys_cell_ctrl::UPDATE_CORES: 
-            /* TODO: call core allocator to update resource ownerships */
+            _core_alloc.confer(pd->cell);
+            _core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
             trace(0, "Updating core affinity for cell %lu:", r->sel());
             Console::print("[");
             pd->cell->cip->cores_reserved.print();

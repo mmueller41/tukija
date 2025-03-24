@@ -36,6 +36,9 @@ struct alignas(64) Cip
     /* Set of CPU cores recently added to this cell */
     Cpuset cores_new{0};
 
+    /* Set of CPU cores for which a return request was filed */
+    Cpuset cores_reclaimed{0};
+
     Cip() = default;
 
     void print()

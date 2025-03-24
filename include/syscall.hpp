@@ -261,6 +261,13 @@ class Sys_pt_ctrl : public Sys_regs
 class Sys_sm_ctrl : public Sys_regs
 {
     public:
+        enum Sem_op
+        {
+            UP = 0,
+            DOWN = 1,
+            DOWNZERO = 3
+        };
+
         ALWAYS_INLINE
         inline unsigned long sm() const { return ARG_1 >> 9; }
 
