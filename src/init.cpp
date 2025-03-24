@@ -104,13 +104,16 @@ void init (mword magic, mword mbi)
 
     for (void (**func)() = &CTORS_G; func != &CTORS_E; (*func++)()) ;
 
-    Hip::build (magic, mbi);
+    bool hip_ok = Hip::build (magic, mbi);
 
     for (void (**func)() = &CTORS_C; func != &CTORS_G; (*func++)()) ;
 
     // Now we're ready to talk to the world
     Console::print ("\fTukija Microhypervisor v%d-%07lx (%s): [%s] [%s]\n", CFG_VER, reinterpret_cast<mword>(&GIT_VER), ARCH, COMPILER_STRING, magic == Multiboot::MAGIC ? "MBI" : (magic==Multiboot2::MAGIC ? "MBI2" : ""));
     _core_alloc.init();
+
+    if (!hip_ok)
+        Console::print ("error: HIP is incomplete\n");
 
     Idt::build();
     Gsi::setup();
