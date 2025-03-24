@@ -114,6 +114,27 @@ class Cpuset
             return count;
         }
 
+        void clear()
+        {
+            Cpuset::for_each(
+                *this,
+                [&](long cpu)
+                {
+                    clr(static_cast<unsigned>(cpu));
+                });
+        }
+
+        unsigned first_cpu()
+        {
+            long cpu = -1;
+            for (unsigned i = 0; values(); i++) {
+                cpu = bit_scan_forward(raw[i]);
+                if (cpu != -1)
+                    break;
+            }
+            return static_cast<unsigned>(cpu);
+        }
+
         void print()
         {
             Cpuset::for_each(*this, [&](long cpu)
