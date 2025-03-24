@@ -35,11 +35,14 @@ class Resource
 
     public:
         Resource(Type type, uint16 id) : _type(type), _id(id) {}
-        inline bool occupy(Cell *pd) { return __atomic_compare_exchange_n(&_current, &_current, pd, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED); }
+        inline bool occupy(Cell *pd) {
+            Cell *expect{nullptr};
+            return __atomic_compare_exchange_n(&_current, &expect, pd, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
+        }
         inline void release() { __atomic_store_n(&_current, nullptr, __ATOMIC_SEQ_CST); }
         inline void confer(Cell *new_owner) { _owner = new_owner; }
         inline Cell *owner() { return _owner; }
-        inline bool borrowed() { return _owner != _current; }
+        inline bool borrowed() { return _owner != _current && _current != nullptr; }
         inline Cell *current() { return const_cast<Cell*>(_current); }
 };
 
