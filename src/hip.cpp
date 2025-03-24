@@ -84,16 +84,9 @@ bool Hip::build (mword magic, mword addr)
     if (memory_allocated < kernel_target_size(system_mem_max))
         add_buddy (hip_guard, system_mem_max, memory_allocated, false);
 
-<<<<<<< HEAD
-    if (memory_allocated < kernel_target_size(system_mem_max)) {
-        add_buddy (mem, h, system_mem_max, memory_allocated, false);
-        h->length = static_cast<uint16>(reinterpret_cast<mword>(mem) - reinterpret_cast<mword>(h));
-    }
-
-    h->topo_phys = Buddy::ptr_to_phys(static_cast<void*>(Tip::tip()));
-=======
+    hip_guard.with_hip([&](auto &h)
+                       { h.topo_phys = Buddy::ptr_to_phys(static_cast<void *>(Tip::tip())); });
     return hip_guard.ready();
->>>>>>> upstream/r10_x2apic_5
 }
 
 void Hip::build_mbi1(Hip_guard &hg, mword addr)
