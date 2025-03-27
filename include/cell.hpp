@@ -30,8 +30,13 @@ class Cell
         Cpuset prefered_cores{0};
         unsigned prio;
 
+        /* Prohibit copying (for -Weffc++) */
+        Cell(const Cell &);
+        Cell &operator=(const Cell &);
+
     public:
         struct Cip *cip{nullptr};
+        bool initialized{false};
 
         /*** Constructors ***/
         
@@ -44,6 +49,9 @@ class Cell
         Cell(unsigned _prio, struct Cip *new_cip) : prio(_prio) , cip(new_cip)
         {
         }
+
+        /*** Destructor ***/
+        ~Cell();
 
         /*** CPU Resource functions ***/
         
@@ -111,4 +119,6 @@ class Cell
         void block_workers_on(unsigned int core);
 
         static void *operator new(size_t, Pd &pd);
+
+        static void destroy(Cell *obj, Pd &pd);
 };

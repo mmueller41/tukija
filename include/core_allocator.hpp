@@ -52,6 +52,13 @@ class Core_allocator
 
         void confer(Cell *new_owner);
         void transfer(Cell *new_owner, unsigned cpu);
+
+        void set_hazard(unsigned cpu, unsigned hazard) {
+            _resources[cpu].hazards |= hazard;
+        }
+
+        bool handle_hazard(unsigned cpu);
+        
 };
 
 extern Core_allocator _core_alloc;

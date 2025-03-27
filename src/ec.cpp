@@ -32,6 +32,7 @@
 #include "sm.hpp"
 #include "pt.hpp"
 #include "cpu.hpp"
+#include "core_allocator.hpp"
 
 Ec *Ec::current, *Ec::fpowner, *Ec::ec_idle;
 Sm *Ec::auth_suspend;
@@ -173,7 +174,8 @@ Ec::Ec (Pd *own, Pd *p, void (*f)(), unsigned c, Ec *clone, Pt *pt) : Kobject (E
 
 Ec::~Ec()
 {
-    if (xcpu_sm) {
+    if (xcpu_sm)
+    {
         /* should never happen, Ec have to pass xcpu_return */
         trace (0, "invalid state, still have xcpu_sm");
 
@@ -201,6 +203,17 @@ Ec::~Ec()
         Utcb::destroy(utcb, pd->quota);
         return;
     }
+    
+    if (pd->cell) {
+        pd->cell->workers_for_core(this->cpu).dequeue(worker);
+        if (pd->cell->cip->worker_info[this->cpu].yield_flag == 1)
+        {
+            trace(0, "Found yield flag set while destroying EC");
+            _core_alloc.return_core(this->cpu);
+        } else if (!pd->cell->workers_for_core(this->cpu).head()) {
+            _core_alloc.release(this->cpu);
+        }
+    }
 
     /* skip xCPU EC */
     if (!vcpu())
@@ -219,9 +232,6 @@ Ec::~Ec()
         Vmcb_state::destroy(regs.vmcb_state, pd->quota);
     }
 
-    if (pd->cell) {
-        pd->worker_cache.free(worker, pd->quota);
-    }
 }
 
 void Ec::handle_hazard (mword hzd, void (*func)())

@@ -68,6 +68,7 @@ unsigned const trace_mask =
                             TRACE_IOMMU     |
                             TRACE_ACPI      |
 #ifdef DEBUG
+                            TRACE_DEL       |
 //                            TRACE_OOM       |
 //                            TRACE_APIC      |
 //                            TRACE_KEYB      |
@@ -77,7 +78,6 @@ unsigned const trace_mask =
 //                            TRACE_PCI       |
 //                            TRACE_SCHEDULE  |
 //                            TRACE_VTLB      |
-//                            TRACE_DEL       |
 //                            TRACE_REV       |
 //                            TRACE_RCU       |
 //                            TRACE_FPU       |

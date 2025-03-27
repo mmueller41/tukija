@@ -291,6 +291,9 @@ class Sys_pd_ctrl : public Sys_regs
         inline unsigned dbg() const { return flags() & 0x2; }
 
         ALWAYS_INLINE
+        inline unsigned del() const { return flags() & 0x4; }
+
+        ALWAYS_INLINE
         inline unsigned long dst() const { return ARG_2; }
 
         ALWAYS_INLINE
@@ -379,6 +382,9 @@ class Sys_cell_ctrl : public Sys_regs
 
         ALWAYS_INLINE
         inline unsigned long sel() { return ARG_1 >> 9; }
+
+        ALWAYS_INLINE
+        inline bool use_shadow() { return static_cast<bool>(ARG_2);  }
 };
 
 class Sys_alloc : public Sys_regs

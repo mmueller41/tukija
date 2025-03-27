@@ -116,12 +116,8 @@ class Cpuset
 
         void clear()
         {
-            Cpuset::for_each(
-                *this,
-                [&](long cpu)
-                {
-                    clr(static_cast<unsigned>(cpu));
-                });
+            for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
+                Atomic::store(raw[i], 0UL);
         }
 
         unsigned first_cpu()

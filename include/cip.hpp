@@ -8,6 +8,7 @@
 #include "config.hpp"
 #include "cpuset.hpp"
 #include "console.hpp"
+#include "spinlock.hpp"
 
 class Pd;
 struct Cip_worker
@@ -27,8 +28,10 @@ struct alignas(64) Cip
     alignas(64) struct Cip_worker worker_info[NUM_CPU];
     struct Channel_info channel_info {};
 
+    Spinlock lock{};
+
     /* Set of CPU cores currently allocated to this cell */
-    Cpuset cores_current{0};
+    alignas(64) Cpuset cores_current{0};
 
     /* Set of CPU cores reserved for this cell*/
     Cpuset cores_reserved{0};
@@ -40,6 +43,8 @@ struct alignas(64) Cip
     Cpuset cores_reclaimed{0};
 
     Cip() = default;
+
+    Cpuset &reserved_cores() { return cores_reserved; }
 
     void print()
     {

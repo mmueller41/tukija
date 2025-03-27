@@ -14,6 +14,7 @@
 #include "slab.hpp"
 #include "stdio.hpp"
 #include "queue.hpp"
+#include "spinlock.hpp"
 
 class Pd;
 class Worker;
@@ -26,12 +27,14 @@ class Resource
         {
             CPU = 0
         };
+        unsigned int hazards{0};
+
 
     protected:
         Type _type;
         uint16 _id; // Identifier for this resource, e.g. a CPU ID.
         Cell *_owner {}; // Rightful owner of this resource, maybe null at first.
-        Cell volatile *_current{}; // Current owner of this resource, if not the original owner.
+        alignas(64) Cell volatile *_current{}; // Current owner of this resource, if not the original owner.
 
     public:
         Resource(Type type, uint16 id) : _type(type), _id(id) {}
@@ -50,6 +53,7 @@ class alignas(64) Cpu_resource : public Resource
 {
     private:
         Queue<Worker> *_workers{nullptr}; // Used for pausing and waking the worker SC
+
 
     public:
         Cpu_resource(uint16 id) : Resource(Type::CPU, id) { }

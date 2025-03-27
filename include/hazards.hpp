@@ -31,3 +31,5 @@
 #define HZD_TSC         0x20000000
 #define HZD_STEP        0x40000000
 #define HZD_RECALL      0x80000000
+#define HZD_YIELD       0x80
+#define HZD_RECLAIM     0x100

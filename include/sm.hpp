@@ -153,6 +153,12 @@ class Sm : public Kobject, public Refcount, public Queue<Ec>, public Queue<Si>, 
         }
 
         ALWAYS_INLINE
+        inline void print()
+        {
+            trace(0, "sm=%lu", counter);
+        }
+
+        ALWAYS_INLINE
         static inline void *operator new (size_t, Pd &pd) { return pd.sm_cache.alloc(pd.quota); }
 
         ALWAYS_INLINE

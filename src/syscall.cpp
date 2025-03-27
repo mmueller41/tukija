@@ -477,7 +477,7 @@ void Ec::sys_create_ec()
 
     if (pd->cell) {
         Worker *w = new (*pd) Worker();
-        //trace(0, "Created new worker on CPU %u", ec->cpu);
+        trace(0, "Created new worker on CPU %u", ec->cpu);
         Sm *sm = new (*pd) Sm(pd, 0, 0);
         if (!w || !sm)
         {
@@ -1124,6 +1124,13 @@ void Ec::sys_pd_ctrl()
         sys_finish<Sys_regs::SUCCESS>();
     }
 
+
+    if (r->del()) {
+        trace(0, "Destroying cell");
+        Cell::destroy(src->cell, *src);
+        sys_finish<Sys_regs::SUCCESS>();
+    }
+
     Capability cap_pd = Space_obj::lookup (r->dst());
     if (EXPECT_FALSE (cap_pd.obj()->type() != Kobject::PD)) {
         trace (TRACE_ERROR, "%s: Bad dst PD CAP (%#lx)", __func__, r->dst());
@@ -1364,7 +1371,7 @@ void Ec::sys_create_cell()
 
     pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
 
-    trace(0, "Created new cell for PD %#lx of priority %d", r->pd(), r->prio());
+    trace(0, "Created new cell for PD %#lx (%p) of priority %d", r->pd(), pd, r->prio());
     trace(0, "Cell Info Page for cell %p of PD %#lx ", static_cast<void*>(pd->cell), r->pd());
     trace(0, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
     trace(0, "Size of CIP is %lu", sizeof(struct Cip));
@@ -1417,12 +1424,12 @@ void Ec::sys_cell_ctrl()
 
     switch (r->op()) {
         case Sys_cell_ctrl::UPDATE_CORES: 
+            if (!pd->cell->initialized) {
+                trace(0, "Intializing cell");
+                _core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
+                pd->cell->initialized = true;
+            }
             _core_alloc.confer(pd->cell);
-            _core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
-            trace(0, "Updating core affinity for cell %lu:", r->sel());
-            Console::print("[");
-            pd->cell->cip->cores_reserved.print();
-            Console::print(" ]\n");
             break;
         default:
             trace(TRACE_ERROR, "%s: Illegal operation: %u", __func__, r->op());

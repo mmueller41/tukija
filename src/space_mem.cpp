@@ -164,6 +164,9 @@ void Space_mem::shootdown(Pd * local)
 
         Pd *pd = Pd::remote (cpu);
 
+        if (pd != local)
+            continue;
+
         if (!pd->htlb.chk (cpu) && !pd->gtlb.chk (cpu))
             continue;
 
@@ -179,14 +182,14 @@ void Space_mem::shootdown(Pd * local)
         if (!Cpu::preemption)
             asm volatile ("sti" : : : "memory");
 
-        bool sent = Lapic::pause_loop_until(500, [&] {
+        bool sent = Lapic::pause_loop_until(1000, [&] {
             return (Counter::remote (cpu, 1) == ctr); });
 
         if (!Cpu::preemption)
             asm volatile ("cli" : : : "memory");
 
         if (!sent)
-            trace (0, "IPI timeout cpu %u->%u", Cpu::id, cpu);
+            trace (0, "IPI timeout cpu %u->%u for PD %p and local PD %p", Cpu::id, cpu, pd, local);
     }
 }
 

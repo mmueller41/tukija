@@ -5,12 +5,15 @@
 #include "cell.hpp"
 #include "pd.hpp"
 #include "sm.hpp"
+#include "core_allocator.hpp"
 
 bool Cell::wake_core(unsigned int core)
 {
     bool woken = false;
     workers[core].for_each([&](auto &worker)
-                           { worker.sm->up(); woken = true; });
+                           { 
+                                    worker.sm->submit();
+                                    woken = true; });
     return woken;
 }
 
@@ -54,6 +57,10 @@ void Cell::add_cores(Cpuset &cores)
                    {
         if (wake_core(static_cast<unsigned>(cpu))) {
             cip->cores_current.set(static_cast<unsigned>(cpu));
+        }
+        else
+        {
+            trace(TRACE_ERROR, "No worker on CPU %ld", cpu);
         } });
 }
 
@@ -63,13 +70,18 @@ void Cell::return_core(unsigned int cpu)
     {
         /* Check whether the yield flag has already been set, if not set it */
         unsigned long expect = 0;
+
+
         bool will_sleep = !__atomic_compare_exchange_n(&(cip->worker_info[cpu].yield_flag), &expect, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
-        if (will_sleep)
-            return;
+        if (will_sleep) {
+            _core_alloc.set_hazard(cpu, HZD_YIELD);
+            _core_alloc.handle_hazard(cpu);
+        }
     }
     else
     {
         /* TODO: directly return CPU core to core allocator */
+        assert(workers[cpu].head());
     }
 }
 
@@ -79,7 +91,7 @@ void Cell::block_workers_on(unsigned int core)
                        {
         Sm *sm = worker.sm;
         Ec::current->cont = Ec::sys_finish<Sys_regs::SUCCESS, true>;
-        sm->dn(false, 0, Ec::current, true); });
+        sm->dn(true, 0, worker.sc->ec, true); });
 }
 
 void *Cell::operator new(size_t, Pd &pd)
@@ -93,4 +105,21 @@ void *Cell::operator new(size_t, Pd &pd)
 void *Worker::operator new(size_t, Pd &pd)
 {
     return pd.worker_cache.alloc(pd.quota);
+}
+
+void Cell::destroy(Cell *obj, Pd &pd)
+{
+    obj->~Cell();
+    pd.cell_cache.free(obj, pd.quota);
+}
+
+Cell::~Cell()
+{ 
+    /* At last, free the CPU cores that were used by this cell */
+
+    Cpuset::for_each(cip->cores_current,
+                     [&](long cpu)
+                     {
+                         _core_alloc.release(static_cast<unsigned>(cpu));
+                     });
 }
