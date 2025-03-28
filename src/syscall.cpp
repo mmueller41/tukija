@@ -475,7 +475,7 @@ void Ec::sys_create_ec()
         sys_finish<Sys_regs::BAD_CAP>();
     }
 
-    if (pd->cell) {
+    if (pd->cell && ec->cont) {
         Worker *w = new (*pd) Worker();
         trace(0, "Created new worker on CPU %u", ec->cpu);
         Sm *sm = new (*pd) Sm(pd, 0, 0);
@@ -767,7 +767,7 @@ void Ec::sys_ec_ctrl()
     Sys_ec_ctrl *r = static_cast<Sys_ec_ctrl *>(current->sys_regs());
 
     switch (r->op()) {
-        case 0:
+        case Sys_ec_ctrl::EC_RECALL:
         {
             Capability cap = Space_obj::lookup (r->ec());
             if (EXPECT_FALSE (cap.obj()->type() != Kobject::EC || !(cap.prm() & 1UL << 0))) {
@@ -833,12 +833,12 @@ void Ec::sys_ec_ctrl()
             break;
         }
 
-        case 1: /* yield */
+        case Sys_ec_ctrl::EC_YIELD: /* yield */
             current->cont = sys_finish<Sys_regs::SUCCESS>;
             Sc::schedule (false, false);
             break;
 
-        case 2: /* helping */
+        case Sys_ec_ctrl::EC_DONATE_SC: /* helping */
         {
             Kobject *obj = Space_obj::lookup (r->ec()).obj();
 
@@ -859,12 +859,12 @@ void Ec::sys_ec_ctrl()
             break;
         }
 
-        case 3: /* re-schedule */
+        case Sys_ec_ctrl::EC_RESCHEDULE: /* re-schedule */
             current->cont = sys_finish<Sys_regs::SUCCESS>;
             Sc::schedule (false, true);
             break;
 
-        case 4: /* migrate */
+        case Sys_ec_ctrl::EC_MIGRATE: /* migrate */
         {
             if (!current->rcap)
                 sys_finish<Sys_regs::BAD_PAR>();
@@ -882,7 +882,7 @@ void Ec::sys_ec_ctrl()
             break;
         }
 
-        case 5: /* execution time */
+        case Sys_ec_ctrl::EC_TIME: /* execution time */
         {
             Kobject *obj = Space_obj::lookup (r->ec()).obj();
 
@@ -897,7 +897,7 @@ void Ec::sys_ec_ctrl()
             break;
         }
 
-        case 6: /* get vcpu state */
+        case Sys_ec_ctrl::EC_GET_VCPU_STATE: /* get vcpu state */
         {
             Capability cap = Space_obj::lookup (r->ec());
             if (EXPECT_FALSE (cap.obj()->type() != Kobject::EC || !(cap.prm() & 1UL << 0))) {
@@ -934,7 +934,7 @@ void Ec::sys_ec_ctrl()
 
             sys_finish<Sys_regs::SUCCESS>();
         }
-        case 7: /* set vcpu state */
+        case Sys_ec_ctrl::EC_SET_VCPU_STATE: /* set vcpu state */
         {
             Capability cap = Space_obj::lookup (r->ec());
             if (EXPECT_FALSE (cap.obj()->type() != Kobject::EC || !(cap.prm() & 1UL << 0))) {
@@ -973,7 +973,7 @@ void Ec::sys_ec_ctrl()
             sys_finish<Sys_regs::SUCCESS>();
         }
 
-        case 8: /* selective & guarded MSR access */
+        case Sys_ec_ctrl::EC_MSR_ACCESS: /* selective & guarded MSR access */
         {
             if (!current->utcb)
                 sys_finish<Sys_regs::BAD_PAR>();
