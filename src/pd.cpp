@@ -46,8 +46,8 @@ Pd::Pd (Pd *own) : Kobject (PD, static_cast<Space_obj *>(own)), pt_cache (sizeof
     Space_mem::insert_root (own->quota, own->mdb_cache, reinterpret_cast<mword>(&LINK_E), 1ULL << 52);
 
     // HIP
-    Space_mem::insert_root (own->quota, own->mdb_cache, reinterpret_cast<mword>(&FRAME_T), reinterpret_cast<mword>(&FRAME_T) + PAGE_T_SIZE, 1);
     Space_mem::insert_root (own->quota, own->mdb_cache, reinterpret_cast<mword>(&FRAME_H), reinterpret_cast<mword>(&FRAME_H) + PAGE_H_SIZE, 1);
+    Space_mem::insert_root (own->quota, own->mdb_cache, reinterpret_cast<mword>(&FRAME_T), reinterpret_cast<mword>(&FRAME_T) + PAGE_T_SIZE, 1);
 
     // I/O Ports
     Space_pio::addreg (own->quota, own->mdb_cache, 0, 1UL << 16, 7);
@@ -59,7 +59,6 @@ Pd::Pd (Pd *own, mword sel, mword a) : Kobject (PD, static_cast<Space_obj *>(own
         bool res = Quota::init.transfer_to(quota, Quota::init.limit());
         assert(res);
     }
-    trace(0, "Created PD with sel=%lu", sel);
 }
 
 template <typename S>

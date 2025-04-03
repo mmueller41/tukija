@@ -205,14 +205,17 @@ Ec::~Ec()
     }
     
     if (pd->cell) {
+        trace(0, "Destroying EC");
         pd->cell->workers_for_core(this->cpu).dequeue(worker);
+        _core_alloc.lock_ipi(0);
         if (pd->cell->cip->worker_info[this->cpu].yield_flag == 1)
         {
             trace(0, "Found yield flag set while destroying EC");
             _core_alloc.return_core(this->cpu);
         } else if (!pd->cell->workers_for_core(this->cpu).head()) {
-            _core_alloc.release(this->cpu);
+            _core_alloc.release(pd->cell, this->cpu);
         }
+        _core_alloc.unlock_ipi(0);
     }
 
     /* skip xCPU EC */
@@ -498,7 +501,7 @@ void Ec::root_invoke()
 
     // Map topology information pages
     Tip::tip()->delegate_to_userspace(*Pd::current);
-    Hip::tip_virt((USER_ADDR - 32 * PAGE_SIZE));
+    Hip::tip_virt((USER_ADDR - PAGE_H_SIZE - PAGE_SIZE));
 
     Space_obj::insert_root (Pd::kern.quota, Pd::current);
     Space_obj::insert_root (Pd::kern.quota, Ec::current);
