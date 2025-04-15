@@ -217,6 +217,22 @@ class Sys_ec_ctrl : public Sys_regs
             ARG_2 = static_cast<mword>(val >> 32);
             ARG_3 = static_cast<mword>(val);
         }
+
+        /**
+         * Ec operations
+         */
+        enum Ec_op
+        {
+            EC_RECALL = 0U,
+            EC_YIELD = 1U,
+            EC_DONATE_SC = 2U,
+            EC_RESCHEDULE = 3U,
+            EC_MIGRATE = 4U,
+            EC_TIME = 5U,
+            EC_GET_VCPU_STATE = 6U,
+            EC_SET_VCPU_STATE = 7U,
+            EC_MSR_ACCESS = 8U
+        };
 };
 
 class Sys_sc_ctrl : public Sys_regs
