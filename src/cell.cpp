@@ -7,14 +7,12 @@
 #include "sm.hpp"
 #include "core_allocator.hpp"
 
-bool Cell::wake_core(unsigned int core)
+void Cell::wake_core(unsigned int core)
 {
-    bool woken = false;
     workers[core].for_each([&](auto &worker)
                            { 
-                                    worker.sm->submit();
-                                    woken = true; });
-    return woken;
+                                    this->cip->cores_current.set(core);
+                                    worker.sm->up(); });
 }
 
 void Cell::wake_cores()
@@ -27,68 +25,44 @@ void Cell::update(Cpuset &alloc)
     prefered_cores.merge(alloc);
 }
 
-unsigned Cell::yield_cores(Cpuset &cores, bool release)
-{
-    unsigned reclaimed = 0;
-    Cpuset::for_each(cores, [&](long cpu)
-                   {
-        if (workers[cpu].head()) {
-            /* Check whether the yield flag has already been set, if not set it */
-            unsigned long expect = 0;
-            bool will_sleep = !__atomic_compare_exchange_n(&(cip->worker_info[cpu].yield_flag), &expect, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
-            if (will_sleep)
-                return;
-            reclaimed++;
-        } else {
-            /* TODO: directly return CPU core to core allocator */
-        }
-        
-        if (release) {
-            /* TODO: free the core at the core allocator */
-        }
-
-        reclaimed++; });
-    return reclaimed;
-}
 
 void Cell::add_cores(Cpuset &cores)
 {
     Cpuset::for_each(cores, [&](long cpu)
-                   {
-        if (wake_core(static_cast<unsigned>(cpu))) {
-            cip->cores_current.set(static_cast<unsigned>(cpu));
-        }
-        else
-        {
-            trace(TRACE_ERROR, "No worker on CPU %ld", cpu);
-        } });
+                     { wake_core(static_cast<unsigned>(cpu)); });
 }
 
-void Cell::return_core(unsigned int cpu)
+bool Cell::return_core(unsigned int cpu)
 {
     if (workers[cpu].head())
     {
-        /* Check whether the yield flag has already been set, if not set it */
         unsigned long expect = 0;
 
-
+        /* Try to set the yield flag in the borrower's CIP. If this fails, the borrower has already indicated the voluntary yield of 
+           the CPU core. */
         bool will_sleep = !__atomic_compare_exchange_n(&(cip->worker_info[cpu].yield_flag), &expect, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_RELAXED);
         if (will_sleep) {
+            /* */
             _core_alloc.set_hazard(cpu, HZD_YIELD);
-            _core_alloc.handle_hazard(cpu);
+            return _core_alloc.handle_hazard(cpu);
         }
+        return true;
     }
     else
     {
-        /* TODO: directly return CPU core to core allocator */
-        assert(workers[cpu].head());
+        _core_alloc.return_core(cpu);
+        return true;
     }
 }
 
 void Cell::block_workers_on(unsigned int core)
 {
+    if (EXPECT_FALSE(to_be_destroyed))
+        return;
+
+    cip->cores_current.clr(core);
     workers[core].for_each([&](auto &worker)
-                       {
+                           {
         Sm *sm = worker.sm;
         Ec::current->cont = Ec::sys_finish<Sys_regs::SUCCESS, true>;
         sm->dn(true, 0, worker.sc->ec, true); });
@@ -117,9 +91,18 @@ Cell::~Cell()
 { 
     /* At last, free the CPU cores that were used by this cell */
 
+    to_be_destroyed = true;
+
     Cpuset::for_each(cip->cores_current,
                      [&](long cpu)
                      {
-                         _core_alloc.release(static_cast<unsigned>(cpu));
+                         if (cip->worker_info[cpu].yield_flag)
+                         {
+                             trace(TRACE_CELL, "Found pending yield request for CPU %lu.", cpu);
+                             _core_alloc.return_core(static_cast<unsigned>(cpu));
+                         }
+                         else
+                             _core_alloc.release(this, static_cast<unsigned>(cpu));
+                         //assert(cip->worker_info[cpu].yield_flag != 1);
                      });
 }

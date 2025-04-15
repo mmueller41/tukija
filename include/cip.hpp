@@ -13,7 +13,7 @@
 class Pd;
 struct Cip_worker
 {
-    volatile unsigned long yield_flag{0};
+    unsigned long yield_flag{0};
     unsigned long padding[3];
 };
 

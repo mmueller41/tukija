@@ -5,12 +5,11 @@
 #include "cell.hpp"
 
 
-bool Cpu_resource::occupy(Cell *pd, Queue<Worker> *workers)
+bool Cpu_resource::occupy(Cell *pd)
 {
     bool rc = Resource::occupy(pd);
     if (rc)
     {
-        _workers = workers;
         pd->cip->cores_new.set(_id);
     }
     return rc;
@@ -20,7 +19,20 @@ void Cpu_resource::release()
 {
 
     Cell *curr = const_cast<Cell*>(_current);
-    curr->cip->cores_current.clr(_id);
+
+    /* It can happen that while we are releasing this CPU core, its owner has
+       filed a yield request. If this is the case, we need to return the core
+       to its owner instead of releasing it. Otherwise, the owner may indefinetely
+       wait for the CPU core's return.
+     */
+    bool need_to_return_core = (curr->cip->worker_info[_id].yield_flag == 1);
+
+    if (need_to_return_core) {
+        return_core();
+        return;
+    }
+
+    /* No yield requests received, clear yield flag and release the CPU core */
     curr->cip->worker_info[_id].yield_flag = 0;
     Resource::release();
 
@@ -33,47 +45,48 @@ void Cpu_resource::release()
 
 }
 
-void Cpu_resource::wake()
+bool Cpu_resource::reclaim()
 {
-    _owner->cip->cores_current.set(_id);
-    _workers->for_each([&](auto &worker)
-                       { Sm *sm = worker.sm;
-        sm->submit(); });
-}
-
-void Cpu_resource::reclaim()
-{
-    // trace(0, "Reclaiming CPU core %u", _id);
-    Cell *borrower;
+    Cell *borrower = current();
     _owner->cip->cores_reclaimed.set(_id);
-    /* It might happen that the borrower from which to reclaim the CPU core
-       has terminated in the meanwhile. If that's the case, we can just 
-       transfer the CPU core to its owner and activate its workers. */
-    if (EXPECT_FALSE(!(borrower = current()))) {
-        __atomic_store_n(&_current, _owner, __ATOMIC_SEQ_CST);
-        _workers = &_owner->workers_for_core(_id);
-        wake();
-        return;
+    
+    /* It's possible that the borrower has just released the CPU 
+       when we get here. So, first, try to occupy the CPU core. 
+       If this fails either the borrower still holds this CPU or
+       another third cell has snatched it away under or nose */
+    if (occupy(_owner)) {
+        current()->wake_core(_id);
+        return true;
+    } else {
+        borrower = current();
     }
-    if (EXPECT_TRUE(borrower != _owner))
-        borrower->return_core(_id);
+    if (EXPECT_TRUE(borrower && borrower != _owner)) {
+        /* The CPU has been borrowed, file a yield request */
+        return borrower->return_core(_id);
+    }
+    /* The CPU has been released here. But, since it may have
+       already been occupied before we could get it, we just give
+       up here to avoid a cascade of occupation retries and 
+       yield requests that may lead to an infinite loop. */
+    _owner->cip->cores_reclaimed.clr(_id);
+    return false;
 }
 
 void Cpu_resource::return_core()
 {
     Cell *borrower = const_cast<Cell*>(_current);
-    borrower->cip->cores_current.clr(_id);
     borrower->cip->worker_info[_id].yield_flag = 0;
 
+    assert(_owner);
     __atomic_store_n(&_current, _owner, __ATOMIC_SEQ_CST);
-    if (_owner)
-    {
-        _workers = &_owner->workers_for_core(_id);
-        wake();
-    }
 
+    current()->wake_core(_id);
+
+    /* Ensure that the we only block, if the cell executing this code
+       actually holds this CPU core. That's because, upon destructrion, 
+       Hoitaja may return CPU cores of a dying cell too. But since Hoitaja
+       is not the occupier, we *must not* block its threads. Otherwise
+       we would end up blocking Hoitaja and stalling cell management infinitely. */
     if (Pd::current->cell == borrower)
         borrower->block_workers_on(_id);
 }
-
-//alignas(64) Cpu_resource cpu_resources[NUM_CPU];

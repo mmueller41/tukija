@@ -26,9 +26,11 @@ struct Worker
 class Cell
 {
     private:
+        Spinlock workers_locks[NUM_CPU];
         Queue<Worker> workers[NUM_CPU];
         Cpuset prefered_cores{0};
         unsigned prio;
+        bool to_be_destroyed{false};
 
         /* Prohibit copying (for -Weffc++) */
         Cell(const Cell &);
@@ -54,7 +56,15 @@ class Cell
         ~Cell();
 
         /*** CPU Resource functions ***/
-        
+
+        void lock_workers_queue(unsigned int core) {
+            workers_locks[core].lock();
+        }
+
+        void unlock_workers_queue(unsigned int core) {
+            workers_locks[core].unlock();
+        }
+
         Queue<Worker> &workers_for_core(unsigned int core) {
             return workers[core];
         }
@@ -80,9 +90,8 @@ class Cell
         /**
          * Wake a cpu core
          * @param core - the CPU core to wake up
-         * @return true, if a worker was registered on the core; otherwise return false
          */
-        bool wake_core(unsigned int core);
+        void wake_core(unsigned int core);
 
         /**
          * @brief Wake all CPU cores that were recently allocated but not woken up yet
@@ -109,7 +118,7 @@ class Cell
          * 
          * @param core - the ID of the CPU core to return to its owner
          */
-        void return_core(unsigned int core);
+        bool return_core(unsigned int core);
 
         /**
          * @brief Block all workers registered for a given CPU core

@@ -130,8 +130,10 @@ void Ec::sys_call()
     Sys_call *s = static_cast<Sys_call *>(current->sys_regs());
 
     Kobject *obj = Space_obj::lookup (s->pt()).obj();
-    if (EXPECT_FALSE (obj->type() != Kobject::PT))
+    if (EXPECT_FALSE (obj->type() != Kobject::PT)) {
+        trace(TRACE_ERROR, "Portal not found");
         sys_finish<Sys_regs::BAD_CAP>();
+    }
 
     Pt *pt = static_cast<Pt *>(obj);
     Ec *ec = pt->ec;
@@ -477,7 +479,7 @@ void Ec::sys_create_ec()
 
     if (pd->cell && ec->cont) {
         Worker *w = new (*pd) Worker();
-        trace(0, "Created new worker on CPU %u", ec->cpu);
+        trace(TRACE_CELL, "Created new worker on CPU %u", ec->cpu);
         Sm *sm = new (*pd) Sm(pd, 0, 0);
         if (!w || !sm)
         {
@@ -1126,7 +1128,6 @@ void Ec::sys_pd_ctrl()
 
 
     if (r->del()) {
-        trace(0, "Destroying cell");
         Cell::destroy(src->cell, *src);
         sys_finish<Sys_regs::SUCCESS>();
     }
@@ -1298,11 +1299,11 @@ void Ec::sys_xcpu_call()
         current->sc_xcpu->add_ref();
 
     } else {
-        bool sc_unused = Lapic::pause_loop_until(1, [&] {
+        bool sc_unused = Lapic::pause_loop_until(10, [&] {
             return !current->sc_xcpu->last_ref(); });
 
         if (!sc_unused) {
-            trace (0, "xCPU EC still in use");
+            trace (0, "xCPU EC still in use on CPU %u", current->sc_xcpu->cpu);
             sys_finish<Sys_regs::COM_TIM>();
         }
 
@@ -1371,12 +1372,12 @@ void Ec::sys_create_cell()
 
     pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
 
-    trace(0, "Created new cell for PD %#lx (%p) of priority %d", r->pd(), pd, r->prio());
-    trace(0, "Cell Info Page for cell %p of PD %#lx ", static_cast<void*>(pd->cell), r->pd());
-    trace(0, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
-    trace(0, "Size of CIP is %lu", sizeof(struct Cip));
+    trace(TRACE_CELL, "Created new cell for PD %#lx (%p) of priority %d", r->pd(), pd, r->prio());
+    trace(TRACE_CELL, "Cell Info Page for cell %p of PD %#lx ", static_cast<void*>(pd->cell), r->pd());
+    trace(TRACE_CELL, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
+    trace(TRACE_CELL, "Size of CIP is %lu", sizeof(struct Cip));
 
-    pd->cell->cip->print();
+    //pd->cell->cip->print();
 
     sys_finish<Sys_regs::SUCCESS>();
 }
@@ -1423,13 +1424,14 @@ void Ec::sys_cell_ctrl()
     }
 
     switch (r->op()) {
-        case Sys_cell_ctrl::UPDATE_CORES: 
-            if (!pd->cell->initialized) {
-                trace(0, "Intializing cell");
+        case Sys_cell_ctrl::UPDATE_CORES:
+            _core_alloc.confer(pd->cell);
+            if (!pd->cell->initialized)
+            {
+                trace(TRACE_CELL, "Intializing cell");
                 _core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
                 pd->cell->initialized = true;
             }
-            _core_alloc.confer(pd->cell);
             break;
         default:
             trace(TRACE_ERROR, "%s: Illegal operation: %u", __func__, r->op());
@@ -1450,16 +1452,18 @@ void Ec::sys_release()
     }
 
     switch (r->op()) {
-        case Sys_release::RELEASE: {
-            if (r->type() == Resource::CPU) {
-                //trace(0, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
-                _core_alloc.release(Cpu::id);
-            }
-            break;
+    case Sys_release::RELEASE:
+    {
+        if (r->type() == Resource::CPU)
+        {
+            trace(TRACE_CORE_ALLOC, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
+            _core_alloc.release(cell, Cpu::id);
+        }
+        break;
         }
         case Sys_release::RETURN: {
             if (r->type() == Resource::CPU) {
-                //trace(0, "Cell %p: Returning CPU %u ", cell, Cpu::id);
+                trace(TRACE_CORE_ALLOC, "Cell %p: Returning CPU %u ", cell, Cpu::id);
                 _core_alloc.return_core(Cpu::id);
             }
             break;
@@ -1468,8 +1472,8 @@ void Ec::sys_release()
             trace(TRACE_ERROR, "%s: Unsupported resource type", __func__);
             sys_finish<Sys_regs::BAD_PAR>();
         }
-    }
-    sys_finish<Sys_regs::SUCCESS>();
+        }
+        sys_finish<Sys_regs::SUCCESS>();
 }
 
 extern "C"

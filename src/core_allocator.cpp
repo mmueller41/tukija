@@ -2,52 +2,37 @@
 #include "stdio.hpp"
 #include "pd.hpp"
 #include "hazards.hpp"
-
-bool Core_allocator::try_alloc(Cell *cell, long cpu)
-{
-    return _resources[cpu].occupy(cell, &cell->workers_for_core(static_cast<unsigned>(cpu)));
-}
+#include "lapic.hpp"
 
 size_t Core_allocator::alloc(size_t quantity, Cell *cell)
 {
     size_t cores_allocated = 0;
-    //Cpuset free_affiliated_cores{0};
-
 
     cell->cip->cores_new.clear();
 
+    /* Always allocate from the reserved CPU cores, first. 
+       This reduces overlaps with other allocating cells and improves 
+       locality of the CPU cores allocated, as the reserved CPU cores
+       are in topological proximity to each other. */
     for (unsigned cpu = 0; cpu < _cpu_count && cores_allocated < quantity; cpu++) {
         if (_resources[cpu].owner() == cell) {
-            if (try_alloc(cell, cpu))
+            if (_resources[cpu].occupy(cell))
                 cores_allocated++;
         }
-    }
-        /*free_affiliated_cores.merge(pre_reserved);
-        free_affiliated_cores.subtract(cell->cip->cores_current);
-
-        //trace(0, "Allocating");
-        Cpuset::for_each_until(
-            free_affiliated_cores,
-            [&](long cpu)
-            {
-                if (try_alloc(cell, cpu))
-                {
-                    cores_allocated++;
-                }
-            },
-            [&]() -> bool
-            { return cores_allocated == quantity; });*/
+    } 
 
     if (cores_allocated == quantity)
         return cores_allocated;
 
-    //trace(0, "Need to borrow %lu cores", quantity - cores_allocated);
+    /* If we still need more CPU cores, now try to borrow
+       free CPU cores from other cells. */
+    trace(TRACE_CORE_ALLOC, "Need to borrow %lu cores", quantity - cores_allocated);
     for (unsigned cpu = 0; cpu < _cpu_count; cpu++)
     {
-        //trace(0, "Trying to allocate CPU %u ", cpu);
+        trace(TRACE_CORE_ALLOC, "Trying to allocate CPU %u ", cpu);
         if (cores_allocated == quantity)
             break;
-        if (try_alloc(cell, cpu))
+        if (_resources[cpu].occupy(cell))
         {
             cores_allocated++;
         }
@@ -55,7 +40,11 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
 
     if (cores_allocated == quantity)
         return cores_allocated;
-    
+
+    /* If we need even more CPU cores, or were unable to get some by 
+       allocating, see if we have hired out CPU cores to other cells and
+       reclaim some until we get the desired amount of CPU cores or 
+       there are no more cores we could reclaim. */
     for (unsigned cpu = 0; cpu < _cpu_count && cores_allocated < quantity; cpu++)
     {
         Cell *owner = _resources[cpu].owner();
@@ -63,26 +52,12 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
         {
             if (_resources[cpu].borrowed()) {
                 if (owner == _resources[cpu].owner()) {
-                    _resources[cpu].reclaim();
-                    cores_allocated++;
+                    if (_resources[cpu].reclaim())
+                        cores_allocated++;
                 }
             }
         }
     }
-
-    // trace(0, "Need to reclaim %lu cores", quantity - cores_allocated);
-    /*Cpuset::for_each_until(
-        pre_reserved,
-        [&](long cpu)
-        {
-            if (_resources[cpu].borrowed())
-            {
-                _resources[cpu].reclaim();
-                cores_allocated++;
-            }
-        },
-        [&]() -> bool
-        { return cores_allocated == quantity; });*/
 
     return cores_allocated;
 }
@@ -92,7 +67,7 @@ void Core_allocator::init() {
     Pd::root.Space_mem::insert(Pd::kern.quota, reinterpret_cast<mword>(_resources), 2, Hpt::HPT_P | Hpt::HPT_NX | Hpt::HPT_W, Buddy::ptr_to_phys(_resources));
 }
 
-void Core_allocator::release(unsigned int cpu)
+void Core_allocator::release(Cell *cell, unsigned int cpu)
 {
     Cpu_resource *cpu_resource = &_resources[cpu];
 
@@ -104,16 +79,15 @@ void Core_allocator::release(unsigned int cpu)
      * do not have the CPU allocated we must block the workers instead of using the 
      * release method of the CPU resource object, as it will hold the wrong information.
      */
-    if (cpu_resource->current() != Pd::current->cell && Pd::current->cell) {
-        Pd::current->cell->cip->worker_info[cpu].yield_flag = 0;
-        Pd::current->cell->block_workers_on(cpu);
+    if (cpu_resource->current() != cell && cell) {
+        cell->cip->worker_info[cpu].yield_flag = 0;
+        cell->block_workers_on(cpu);
         return;
     }
-
     cpu_resource->release();
 }
 
-void Core_allocator::return_core(unsigned int cpu)
+void Core_allocator::return_core([[maybe_unused]] unsigned int cpu)
 {
     _resources[cpu].return_core();
 }
@@ -131,8 +105,8 @@ void Core_allocator::transfer([[maybe_unused]] Cell *new_owner, unsigned cpu) {
     if (_resources[cpu].borrowed()) {
         _resources[cpu].reclaim();
     } else {
-        trace(0, "Occupying CPU %u ", cpu);
-        if (!_resources[cpu].occupy(new_owner, &new_owner->workers_for_core(cpu))) {
+        trace(TRACE_CORE_ALLOC, "Occupying CPU %u ", cpu);
+        if (!_resources[cpu].occupy(new_owner)) {
             if (!_resources[cpu].borrowed())
                 return;
             trace(TRACE_ERROR, "Failed to transfer CPU %u", cpu);
@@ -146,27 +120,26 @@ bool Core_allocator::handle_hazard(unsigned cpu)
 {
     switch (_resources[cpu].hazards) {
         case HZD_YIELD: {
+            /* An overlap of a yield request with a voluntary yield occurred */
             _resources[cpu].hazards &= ~HZD_YIELD;
-            bool need_alloc = false;
 
-            while (true) {
-                if (_resources[cpu].current() == _resources[cpu].owner())
-                    break;
-                
-                if (_resources[cpu].current() == nullptr) {
-                    need_alloc = true;
-                    break;
-                }
+            Cell *borrower = _resources[cpu].current();
 
-                __builtin_ia32_pause();
-            }
-
+            /* First, wait for the CPU core to be fully released */
+            Lapic::pause_loop_until(1, [&]()
+                                    { return borrower && _resources[cpu].current() == borrower; });
 
             Cell *owner = _resources[cpu].owner();
 
-            if (need_alloc && !_resources[cpu].occupy(owner, &owner->workers_for_core(cpu))) {
-                if (_resources[cpu].owner() == owner)
-                    _resources[cpu].reclaim();
+            /* CPU has been released by borrower, try to occupy it */
+            if (EXPECT_TRUE(_resources[cpu].occupy(owner))) {
+                if (borrower) /* it might be that borrower is a nullptr, so check it here */
+                    borrower->cip->cores_current.clr(cpu); /* if the borrower is not null clear the bit for this CPU */
+            } else {
+                /* The occupation failed, due to another cell being faster. 
+                   Hence, clear the reclamation flag for it and cancel the reclamation. */
+                owner->cip->cores_reclaimed.clr(cpu);
+                return false;
             }
             return true;
         }
