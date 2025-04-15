@@ -58,17 +58,21 @@ enum {
     TRACE_SYSCALL   = 1UL << 30,
     TRACE_ERROR     = 1UL << 31,
     TRACE_TIP       = 1UL << 32,
+    TRACE_CELL      = 1UL << 6,
+    TRACE_CORE_ALLOC= 1UL << 7,
 };
 
 /*
  * Enabled trace events
  */
 unsigned const trace_mask =
+                            TRACE_ACPI      |
                             TRACE_CPU       |
                             TRACE_IOMMU     |
-                            TRACE_ACPI      |
 #ifdef DEBUG
+                            TRACE_CELL      |
                             TRACE_DEL       |
+                            TRACE_CORE_ALLOC|
 //                            TRACE_OOM       |
 //                            TRACE_APIC      |
 //                            TRACE_KEYB      |

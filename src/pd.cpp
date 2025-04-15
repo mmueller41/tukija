@@ -454,7 +454,7 @@ Pd::~Pd()
 {
     pre_free(this);
 
-    trace(0, "Destroying PD %p", this);
+    trace(TRACE_MEMORY, "Destroying PD %p", this);
 
     Space_mem::hpt.clear(quota, Space_mem::hpt.dest_hpt, Space_mem::hpt.iter_hpt_lev);
 
