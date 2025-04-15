@@ -50,7 +50,7 @@ Sc::Sc (Pd *own, mword sel, Ec *e, cpu_t c, unsigned p, unsigned q) : Kobject (S
     trace (TRACE_SYSCALL, "SC:%p created (EC:%p CPU:%#x P:%#x Q:%#x)", this, e, c, p, q);
 }
 
-Sc::Sc (Pd *own, Ec *e, cpu_t c, Sc *x) : Kobject (SC, static_cast<Space_obj *>(own), 0, 0x1, free_xcpu), ec (e), cpu (c), prio (x->prio), budget (x->budget), left (x->left)
+Sc::Sc (Pd *own, Ec *e, cpu_t c, Sc *x) : Kobject (SC, static_cast<Space_obj *>(own), 0, 0x1, free_xcpu), ec (e), cpu (c), prio ((x->prio+32U) > static_cast<uint16>(127)? static_cast<uint16>(127): x->prio+32), budget (x->budget), left (x->left)
 {
     trace (TRACE_SYSCALL, "SC:%p created (EC:%p CPU:%#x P:%#x Q:%#llx) - xCPU", this, e, c, prio, budget / (Lapic::freq_bus / 1000));
 }
