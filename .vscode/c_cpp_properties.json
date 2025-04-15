@@ -1,0 +1,49 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/home/mml/genode-igb/contrib/tukija-4755efcdeaf8f37dd554a85a6dafa3ba3bd537e5/src/kernel/tukija/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/local/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-clang-x64",
+            "compilerPathInCppPropertiesJson": "/usr/local/bin/clang",
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "/home/mml/genode-igb/contrib/tukija-4755efcdeaf8f37dd554a85a6dafa3ba3bd537e5/src/kernel/tukija/**",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "EalánOS",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/local/genode/tool/23.05/lib/gcc/x86_64-pc-elf/12.3.0/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/local/genode/tool/23.05/bin/genode-x86-g++",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerArgs": [
+                "-nostdinc",
+                "-m64"
+            ],
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "/home/mml/genode-igb/contrib/tukija-4755efcdeaf8f37dd554a85a6dafa3ba3bd537e5/src/kernel/tukija/**",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
