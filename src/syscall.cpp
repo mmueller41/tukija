@@ -1357,7 +1357,7 @@ void Ec::sys_create_cell()
         sys_finish<Sys_regs::BAD_PAR>();
     }
 
-    struct Cip *cip = new (Pd::kern) Cip();
+    struct Cip *cip = new (*pd) Cip();
     unsigned long *cip_hva = reinterpret_cast<unsigned long*>(cip);
 
     r->cip(Buddy::ptr_to_phys(cip_hva));
