@@ -199,21 +199,32 @@ Ec::~Ec()
     if (this->time > this->time_m)
         Atomic::add(Ec::killed_time[this->cpu], this->time - this->time_m);
 
+    if (pd->cell) {
+        pd->cell->workers_for_core(this->cpu).dequeue(worker);
+        
+        if (!pd->cell->to_be_destroyed) {
+            if (pd->cell->cip->worker_info[this->cpu].yield_flag == 1)
+            {
+                _core_alloc.return_core(this->cpu);
+            } else if (!pd->cell->workers_for_core(this->cpu).head()) {
+                _core_alloc.release(pd->cell, this->cpu);
+            }
+        }
+        
+        if (worker) {
+            if (worker->sm) {
+                pd->sm_cache.free(worker->sm, pd->quota);
+            }
+            pd->worker_cache.free(worker, pd->quota);
+            trace(TRACE_CELL, "Destroyed worker for EC %p", this);
+        }
+    }
+    
     if (utcb) {
         Utcb::destroy(utcb, pd->quota);
         return;
     }
     
-    if (pd->cell) {
-        pd->cell->workers_for_core(this->cpu).dequeue(worker);
-        if (pd->cell->cip->worker_info[this->cpu].yield_flag == 1)
-        {
-            _core_alloc.return_core(this->cpu);
-        } else if (!pd->cell->workers_for_core(this->cpu).head()) {
-            _core_alloc.release(pd->cell, this->cpu);
-        }
-    }
-
     /* skip xCPU EC */
     if (!vcpu())
         return;
@@ -497,7 +508,7 @@ void Ec::root_invoke()
 
     // Map topology information pages
     Tip::tip()->delegate_to_userspace(*Pd::current);
-    Hip::tip_virt((USER_ADDR - PAGE_H_SIZE - PAGE_SIZE));
+    Hip::tip_virt((USER_ADDR - PAGE_H_SIZE - PAGE_T_SIZE - PAGE_SIZE));
 
     Space_obj::insert_root (Pd::kern.quota, Pd::current);
     Space_obj::insert_root (Pd::kern.quota, Ec::current);
@@ -639,8 +650,8 @@ void Ec::xcpu_revert(void (*sm_cont)())
 
 void Ec::idl_handler()
 {
-    if (Ec::current->cont == Ec::idle)
-        Rcu::update(false);
+    //if (Ec::current->cont == Ec::idle)
+    Rcu::update(false);
 }
 
 void Ec::hlt_prepare()
