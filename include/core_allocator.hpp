@@ -33,6 +33,7 @@ class Core_allocator
     private:
         alignas(64) Cpu_resource *_resources{nullptr}; /* array of CPU resources */
         alignas(64) unsigned _cpu_count{0}; /* number of CPU resources that are available */
+        alignas(64) Cpuset _idle_cpus{0};
 
         /**
          * @brief try to allocate a single CPU for a cell
@@ -46,6 +47,7 @@ class Core_allocator
 
 
     public:
+        friend class Cpu_resource;
         Core_allocator() = default;
 
         /**
@@ -90,6 +92,7 @@ class Core_allocator
             if (_cpu_count > 64)
                 return;
             Atomic::add<unsigned>(_cpu_count, 1);
+            _idle_cpus.set(cpu);
         }
 
         /**

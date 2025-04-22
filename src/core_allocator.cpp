@@ -14,12 +14,19 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
        This reduces overlaps with other allocating cells and improves 
        locality of the CPU cores allocated, as the reserved CPU cores
        are in topological proximity to each other. */
-    for (unsigned cpu = 0; cpu < _cpu_count && cores_allocated < quantity; cpu++) {
-        if (_resources[cpu].owner() == cell) {
+
+    Cpuset reserved = cell->cip->cores_reserved;
+    reserved.subtract(cell->cip->cores_current);
+
+    Cpuset::for_each_until(
+        reserved,
+        [&](long cpu)
+        {
             if (_resources[cpu].occupy(cell))
                 cores_allocated++;
-        }
-    } 
+        },
+        [&]()
+        { return cores_allocated >= quantity; });
 
     if (cores_allocated == quantity)
         return cores_allocated;
@@ -27,16 +34,16 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
     /* If we still need more CPU cores, now try to borrow
        free CPU cores from other cells. */
     trace(TRACE_CORE_ALLOC, "Need to borrow %lu cores", quantity - cores_allocated);
-    for (unsigned cpu = 0; cpu < _cpu_count; cpu++)
-    {
-        trace(TRACE_CORE_ALLOC, "Trying to allocate CPU %u ", cpu);
-        if (cores_allocated == quantity)
-            break;
-        if (_resources[cpu].occupy(cell))
+
+    Cpuset::for_each_until(
+        _idle_cpus,
+        [&](long cpu)
         {
-            cores_allocated++;
-        }
-    }
+            if (_resources[cpu].occupy(cell))
+                cores_allocated++;
+        },
+        [&]()
+        { return cores_allocated >= quantity; });
 
     if (cores_allocated == quantity)
         return cores_allocated;
@@ -45,19 +52,19 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
        allocating, see if we have hired out CPU cores to other cells and
        reclaim some until we get the desired amount of CPU cores or 
        there are no more cores we could reclaim. */
-    for (unsigned cpu = 0; cpu < _cpu_count && cores_allocated < quantity; cpu++)
-    {
-        Cell *owner = _resources[cpu].owner();
-        if (owner == cell)
+
+    Cpuset::for_each_until(
+        reserved,
+        [&](long cpu)
         {
-            if (_resources[cpu].borrowed()) {
-                if (owner == _resources[cpu].owner()) {
-                    if (_resources[cpu].reclaim())
-                        cores_allocated++;
-                }
+            if (_resources[cpu].borrowed())
+            {
+                if (_resources[cpu].reclaim())
+                    cores_allocated++;
             }
-        }
-    }
+        },
+        [&]()
+        { return cores_allocated >= quantity; });
 
     return cores_allocated;
 }
@@ -126,8 +133,8 @@ bool Core_allocator::handle_hazard(unsigned cpu)
             Cell *borrower = _resources[cpu].current();
 
             /* First, wait for the CPU core to be fully released */
-            Lapic::pause_loop_until(1, [&]()
-                                    { return borrower && _resources[cpu].current() == borrower; });
+            Lapic::pause_loop_until(5, [&]()
+                                    { return borrower && _resources[cpu].current() == borrower; }, 1000);
 
             Cell *owner = _resources[cpu].owner();
 
