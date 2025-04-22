@@ -1299,11 +1299,8 @@ void Ec::sys_xcpu_call()
         current->sc_xcpu->add_ref();
 
     } else {
-        bool sc_unused = Lapic::pause_loop_until(10, [&] {
-            return !current->sc_xcpu->last_ref(); });
-
-        if (!sc_unused) {
-            trace (0, "xCPU EC still in use on CPU %u", current->sc_xcpu->cpu);
+        if (!current->sc_xcpu->last_ref()) {
+            trace (0, "xCPU EC still in use");
             sys_finish<Sys_regs::COM_TIM>();
         }
 
