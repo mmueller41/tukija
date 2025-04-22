@@ -184,7 +184,7 @@ void Pd::revoke (mword const base, mword const ord, mword const attr, bool self,
 
             ptr = ACCESS_ONCE (node->next);
 
-            if (ptr->dpth <= d)
+            if (!ptr || ptr->dpth <= d)
                 break;
 
             if (!self && ptr->prnt == mdb)
