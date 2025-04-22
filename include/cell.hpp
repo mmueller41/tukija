@@ -30,13 +30,13 @@ class Cell
         Queue<Worker> workers[NUM_CPU];
         Cpuset prefered_cores{0};
         unsigned prio;
-        bool to_be_destroyed{false};
 
         /* Prohibit copying (for -Weffc++) */
         Cell(const Cell &);
         Cell &operator=(const Cell &);
 
     public:
+        bool to_be_destroyed{false};
         struct Cip *cip{nullptr};
         bool initialized{false};
 

@@ -83,6 +83,7 @@ void *Worker::operator new(size_t, Pd &pd)
 
 void Cell::destroy(Cell *obj, Pd &pd)
 {
+    Buddy::free(reinterpret_cast<Paddr>(obj->cip), pd.quota);
     obj->~Cell();
     pd.cell_cache.free(obj, pd.quota);
 }
