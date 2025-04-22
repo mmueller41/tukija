@@ -10,6 +10,7 @@ bool Cpu_resource::occupy(Cell *pd)
     bool rc = Resource::occupy(pd);
     if (rc)
     {
+        _core_alloc._idle_cpus.clr(_id);
         pd->cip->cores_new.set(_id);
     }
     return rc;
@@ -35,6 +36,7 @@ void Cpu_resource::release()
     /* No yield requests received, clear yield flag and release the CPU core */
     curr->cip->worker_info[_id].yield_flag = 0;
     Resource::release();
+    _core_alloc._idle_cpus.set(_id);
 
     /* As Hoitaja can also release CPU cores of arbitrary cells, 
         block current EC only if the caller is *not* Hoitaja.
