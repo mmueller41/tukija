@@ -223,7 +223,7 @@ class Lapic final
         REGPARM (1)
         static void ipi_vector (unsigned) asm ("ipi_vector");
 
-        static bool pause_loop_until(uint64 ms, auto const &fn)
+        static bool pause_loop_until(uint64 ms, auto const &fn, unsigned divider = 1)
         {
            bool     timeout = false;
            unsigned r       = 0;
@@ -233,7 +233,7 @@ class Lapic final
              pause();
 
              if (freq_tsc && ((++r % 100) == 0))
-                timeout = (tsc + (ms * freq_tsc)) < time();
+                timeout = (tsc + (ms * freq_tsc / divider)) < time();
            }
 
            return !timeout;
