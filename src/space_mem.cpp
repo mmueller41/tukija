@@ -164,9 +164,6 @@ void Space_mem::shootdown(Pd * local)
 
         Pd *pd = Pd::remote (cpu);
 
-        if (pd != local)
-            continue;
-
         if (!pd->htlb.chk (cpu) && !pd->gtlb.chk (cpu))
             continue;
 
