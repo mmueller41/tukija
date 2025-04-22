@@ -1358,24 +1358,23 @@ void Ec::sys_create_cell()
     }
 
     struct Cip *cip = new (*pd) Cip();
-    unsigned long *cip_hva = reinterpret_cast<unsigned long*>(cip);
 
-    r->cip(Buddy::ptr_to_phys(cip_hva));
+    Paddr cip_hva = cip->map(Pd::current, pd, r->dst());
+
+    pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
+
+    r->cip(Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
 
     if (!cip_hva) {
         trace(TRACE_ERROR, "%s: Unable to allocate kernel memory for CIP", __func__);
         sys_finish<Sys_regs::QUO_OOM>();
     }
 
-    Pd::current->Space_mem::insert(Pd::current->quota, reinterpret_cast<mword>(r->dst()), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
-    pd->Space_mem::insert(pd->quota, (USER_ADDR - 36 * PAGE_SIZE), 2, Hpt::HPT_U | Hpt::HPT_W | Hpt::HPT_P, Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
-
-    pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
-
     trace(TRACE_CELL, "Created new cell for PD %#lx (%p) of priority %d", r->pd(), pd, r->prio());
     trace(TRACE_CELL, "Cell Info Page for cell %p of PD %#lx ", static_cast<void*>(pd->cell), r->pd());
     trace(TRACE_CELL, "CIP is at VA %lx", (USER_ADDR - 36 * PAGE_SIZE));
     trace(TRACE_CELL, "Size of CIP is %lu", sizeof(struct Cip));
+    trace(TRACE_CELL, "Mapped CIP to Hoitaja at %lx", r->dst());
 
     //pd->cell->cip->print();
 

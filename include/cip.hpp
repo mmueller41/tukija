@@ -46,6 +46,8 @@ struct alignas(64) Cip
 
     Cpuset &reserved_cores() { return cores_reserved; }
 
+    Paddr map(Pd * parent, Pd *self, Paddr parent_va);
+
     void print()
     {
         Console::print("------<CPU resource info>------\n");
