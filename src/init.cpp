@@ -127,4 +127,5 @@ void init (mword magic, mword mbi)
     Console::print("Topology Info Pages reside at host virtual address %p\n", Tip::tip());
     Tip::tip()->print();
     Console::print("CPU allocator has size of %lu bytes at %p - %lx", sizeof(Core_allocator), &_core_alloc, (reinterpret_cast<unsigned long>(&_core_alloc) + sizeof(_core_alloc)));
+    Console::print("\nRoot PD: %p Kern PD: %p", &Pd::root, &Pd::kern);
 }
