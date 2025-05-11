@@ -35,10 +35,12 @@ void Tip::delegate_to_userspace(Pd &pd)
     mword virt = align_dn (tip_addr, PAGE_SIZE);
     mword size = align_up (PAGE_T_SIZE, PAGE_SIZE);
 
-    for (unsigned long o; size; size -= 1UL << o, phys += 1UL << o, virt += 1UL << o)
+    for (unsigned long o; size; size -= 1UL << o, phys += 1UL << o, virt += 1UL << o) {
         pd.delegate<Space_mem>(&Pd::kern, phys >> PAGE_BITS, virt >> PAGE_BITS, (o = min (max_order (phys, size), max_order (virt, size))) - PAGE_BITS, 1);
+        trace(TRACE_TIP, "Mapping TIP frame to VA %lx", virt);
+    }
 
-    trace(0, "Mapped TIP to userspace GVA: %lx", tip_addr);
+    trace(TRACE_TIP, "Mapped TIP to userspace GVA: %lx", tip_addr);
 }
 
 void *Tip_mem::operator new(size_t, Tip_node &node) { return node.alloc_mem(); }
