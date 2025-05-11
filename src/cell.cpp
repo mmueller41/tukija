@@ -97,7 +97,7 @@ Cell::~Cell()
     Cpuset::for_each(cip->cores_current,
                      [&](long cpu)
                      {
-                         if (cip->worker_info[cpu].yield_flag)
+                         if (cip->worker_info[cpu].yield_flag == 1)
                          {
                              trace(TRACE_CELL, "Found pending yield request for CPU %lu.", cpu);
                              _core_alloc.return_core(static_cast<unsigned>(cpu));
