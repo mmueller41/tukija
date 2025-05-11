@@ -42,6 +42,9 @@ struct alignas(64) Cip
     /* Set of CPU cores for which a return request was filed */
     Cpuset cores_reclaimed{0};
 
+    /* Padding for CIP area solely used by user-space */
+    unsigned char padding[1048];
+
     Cip() = default;
 
     Cpuset &reserved_cores() { return cores_reserved; }
