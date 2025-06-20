@@ -130,4 +130,12 @@ class Cell
         static void *operator new(size_t, Pd &pd);
 
         static void destroy(Cell *obj, Pd &pd);
+
+		void update_channel_params(size_t cores)
+		{
+			if (!cores || !cip->channel_info.count)
+                return;
+			cip->channel_info.limit = static_cast<unsigned short>(cip->channel_info.count / cores);
+			cip->channel_info.remainder = static_cast<unsigned short>(cip->channel_info.count % cores);
+		}
 };
