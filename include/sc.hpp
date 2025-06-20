@@ -29,7 +29,8 @@ class Ec;
 class Sc : public Kobject, public Refcount
 {
     friend class Queue<Sc>;
-
+    friend class Ec;
+	
     public:
         Refptr<Ec> const ec;
         cpu_t            cpu;

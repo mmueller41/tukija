@@ -443,17 +443,25 @@ void Ec::idle()
 
         uint64 t1 = rdtsc();
 
-        Cpu::halt_or_mwait([&]() {
-            asm volatile ("sti; hlt; cli" : : : "memory");
-        }, [&](auto const cstate_hint) {
-            mword volatile dummy = 0;
-            asm volatile ("monitor" :: "a" (&dummy), "c"(0), "d"(0) : "memory");
-            asm volatile ("sti; mwait; cli;" :: "a"(cstate_hint), "c"(0) : "memory");
-        });
+		Cpu::mwait_hint = 0;
+		Sc::Rq *r = Sc::remote(Cpu::id);
+
+		Cpu::halt_or_mwait(
+			[&]() {
+				asm volatile("sti; hlt; cli" : : : "memory");
+			},
+			[&](auto const cstate_hint) {
+				asm volatile("monitor" ::"a"(&r->queue), "c"(0), "d"(0) : "memory");
+				asm volatile("sti; mwait; cli;" ::"a"(cstate_hint), "c"(0) : "memory");
+			});
+
+		if (!r->queue) continue;
 
         uint64 t2 = rdtsc();
 
-        Counter::cycles_idle += t2 - t1;
+		Counter::cycles_idle += t2 - t1;
+
+		Sc::rrq_handler();
     }
 }
 
