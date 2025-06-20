@@ -1127,7 +1127,11 @@ void Ec::sys_pd_ctrl()
     }
 
 
-    if (r->del()) {
+	if (r->del()) {
+		if (!src->cell) {
+			trace(TRACE_ERROR, "%s: PD (%#lx) is not a cell", __func__, r->src());
+			sys_finish<Sys_regs::BAD_PAR>();
+		}
         Cell::destroy(src->cell, *src);
         sys_finish<Sys_regs::SUCCESS>();
     }
@@ -1389,10 +1393,14 @@ void Ec::sys_alloc()
     }
 
     switch (r->type()) {
-        case Resource::CPU: {
+	case Resource::CPU:
+		{
+			if (r->quantity() <= 0)
+				sys_finish<Sys_regs::BAD_PAR>();
             size_t cores = _core_alloc.alloc(r->quantity(), cell);
             if (!cores)
                 sys_finish<Sys_regs::QUO_OOM>();
+            cell->update_channel_params(cores);
             cell->wake_cores();
             break;
         } default:
