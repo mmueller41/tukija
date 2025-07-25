@@ -1337,6 +1337,11 @@ void Ec::ret_xcpu_reply()
     } else
         current->cont = ret_user_sysexit;
 
+    if (Sc::current->disable && Sc::current->ec == current) {
+        current->cont = dead;
+        Sc::schedule(true);
+    }
+
     current->make_current();
 }
 
