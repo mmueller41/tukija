@@ -177,7 +177,7 @@ Ec::~Ec()
     if (xcpu_sm)
     {
         /* should never happen, Ec have to pass xcpu_return */
-        trace (0, "invalid state, still have xcpu_sm cont=%p", cont);
+        trace (0, "invalid state, still have xcpu_sm");
 
         auto sm = xcpu_revert();
 
