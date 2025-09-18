@@ -67,10 +67,10 @@ enum {
  */
 unsigned const trace_mask =
                             TRACE_ACPI      |
-                            TRACE_CPU       |
                             TRACE_IOMMU     |
-                            TRACE_TIP |
 #ifdef DEBUG
+                            TRACE_CPU       |
+                            TRACE_TIP |
                             TRACE_CELL      |
                             TRACE_DEL       |
                             TRACE_CORE_ALLOC|
