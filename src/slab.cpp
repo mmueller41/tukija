@@ -53,7 +53,8 @@ void *Slab::alloc()
 
 void Slab::free (void *ptr)
 {
-    assert (avail < cache->elem);
+	if (avail >= cache->elem)
+		return;
 
     avail++;
 
@@ -175,8 +176,9 @@ void Slab_cache::free (void *ptr, Quota &quota)
 
 void Slab_cache::free (Quota &quota)
 {
-    while (head) {
-        assert (!head->full());
+	while (head) {
+		if (head->full())
+			return;
         assert (head->cache == this);
         curr = head;
         Slab::destroy(head, quota);

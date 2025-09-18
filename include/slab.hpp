@@ -22,6 +22,7 @@
 
 #include "buddy.hpp"
 #include "initprio.hpp"
+#include "stdio.hpp"
 
 class Slab;
 
@@ -46,7 +47,7 @@ class Slab_cache
         unsigned long elem; // Number of elements
 
         Slab_cache (unsigned long elem_size, unsigned elem_align);
-        ~Slab_cache () { assert (!head && !curr); }
+        ~Slab_cache () { if (head || curr) trace(TRACE_ERROR, "Elements not freed at slab destruction"); }
 
         /*
          * Front end allocator
