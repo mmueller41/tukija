@@ -14,7 +14,7 @@ class Pd;
 struct Cip_worker
 {
     unsigned long yield_flag{0};
-    unsigned long padding[3];
+    unsigned long padding[7];
 };
 
 struct Channel_info {
