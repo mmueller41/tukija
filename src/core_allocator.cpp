@@ -109,7 +109,11 @@ void Core_allocator::confer(Cell *new_owner) {
 }
 
 void Core_allocator::transfer([[maybe_unused]] Cell *new_owner, unsigned cpu) {
-    if (_resources[cpu].borrowed()) {
+
+	if (!_idle_cpus.chk(cpu))
+		return;
+	
+	if (_resources[cpu].borrowed()) {
         _resources[cpu].reclaim();
     } else {
         trace(TRACE_CORE_ALLOC, "Occupying CPU %u ", cpu);
