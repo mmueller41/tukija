@@ -22,7 +22,10 @@
 
 #pragma once
 
+#include "arch.hpp"
+#include "compiler.hpp"
 #include "qpd.hpp"
+#include "regs.hpp"
 
 class Sys_call : public Sys_regs
 {
@@ -431,4 +434,12 @@ class Sys_release : public Sys_regs
         inline unsigned long type() {
             return ARG_1 >> 9;
         }
+};
+
+class Sys_map_tip : public Sys_regs
+{
+	public:
+
+		ALWAYS_INLINE
+		inline unsigned long sel() { return ARG_1 >> 9; }
 };

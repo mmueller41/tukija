@@ -20,15 +20,20 @@
  * GNU General Public License version 2 for more details.
  */
 
+#include "capability.hpp"
 #include "cip.hpp"
+#include "compiler.hpp"
 #include "iommu_intel.hpp"
 #include "gsi.hpp"
 #include "hip.hpp"
 #include "hpet.hpp"
+#include "kobject.hpp"
 #include "lapic.hpp"
 #include "pci.hpp"
 #include "pt.hpp"
 #include "sm.hpp"
+#include "space.hpp"
+#include "space_obj.hpp"
 #include "stdio.hpp"
 #include "syscall.hpp"
 #include "utcb.hpp"
@@ -1433,8 +1438,8 @@ void Ec::sys_cell_ctrl()
             if (!pd->cell->initialized)
             {
                 trace(TRACE_CELL, "Intializing cell");
-                _core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
-                pd->cell->initialized = true;
+				_core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
+				pd->cell->initialized = true;
             }
             break;
         default:
@@ -1443,6 +1448,24 @@ void Ec::sys_cell_ctrl()
     }
     
     sys_finish<Sys_regs::SUCCESS>();
+}
+
+void Ec::sys_map_tip()
+{
+	Sys_map_tip *r = static_cast<Sys_map_tip *>(current->sys_regs());
+
+	Capability cap = Space_obj::lookup(r->sel());
+	if (EXPECT_FALSE(cap.obj()->type() != Kobject::PD)) {
+		trace(TRACE_ERROR, "%s: Bad PD cap (%#lx) of type=%u", __func__, r->sel(),
+		      cap.obj()->type());
+		sys_finish<Sys_regs::BAD_CAP>();
+	}
+
+	Pd *pd = static_cast<Pd*>(cap.obj());
+	Tip::tip()->delegate_to_userspace(*pd);
+
+	sys_finish<Sys_regs::SUCCESS>();
+
 }
 
 void Ec::sys_release()
@@ -1480,29 +1503,12 @@ void Ec::sys_release()
         sys_finish<Sys_regs::SUCCESS>();
 }
 
-extern "C"
-void (*const syscall[])() =
-{
-    &Ec::sys_call,
-    &Ec::sys_reply,
-    &Ec::sys_create_pd,
-    &Ec::sys_create_ec,
-    &Ec::sys_create_sc,
-    &Ec::sys_create_pt,
-    &Ec::sys_create_sm,
-    &Ec::sys_revoke,
-    &Ec::sys_misc,
-    &Ec::sys_ec_ctrl,
-    &Ec::sys_sc_ctrl,
-    &Ec::sys_pt_ctrl,
-    &Ec::sys_sm_ctrl,
-    &Ec::sys_assign_pci,
-    &Ec::sys_assign_gsi,
-    &Ec::sys_pd_ctrl,
-    &Ec::sys_create_cell,
-    &Ec::sys_alloc,
-    &Ec::sys_cell_ctrl,
-    &Ec::sys_release,
+extern "C" void (*const syscall[])() = {
+	&Ec::sys_call, &Ec::sys_reply, &Ec::sys_create_pd, &Ec::sys_create_ec, &Ec::sys_create_sc,
+	&Ec::sys_create_pt, &Ec::sys_create_sm, &Ec::sys_revoke, &Ec::sys_misc, &Ec::sys_ec_ctrl,
+	&Ec::sys_sc_ctrl, &Ec::sys_pt_ctrl, &Ec::sys_sm_ctrl, &Ec::sys_assign_pci, &Ec::sys_assign_gsi,
+	&Ec::sys_pd_ctrl, &Ec::sys_create_cell, &Ec::sys_alloc, &Ec::sys_cell_ctrl, &Ec::sys_release,
+	&Ec::sys_map_tip
 };
 
 template void Ec::sys_finish<Sys_regs::COM_ABT>();

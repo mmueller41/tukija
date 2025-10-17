@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "compiler.hpp"
 #include "counter.hpp"
 #include "fpu.hpp"
 #include "mtd.hpp"
@@ -583,5 +584,8 @@ class Ec : public Kobject, public Refcount, public Queue<Sc>
         static void sys_create_habitat();
 
         NORETURN
-        static void sys_habitat_ctrl();
+		static void sys_habitat_ctrl();
+
+		NORETURN
+		static void sys_map_tip();
 };
