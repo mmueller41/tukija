@@ -89,9 +89,8 @@ class Core_allocator
          */
         void add_cpu([[maybe_unused]] unsigned int cpu) {
             new (&_resources[cpu]) Cpu_resource(static_cast<uint16>(cpu));
-            if (_cpu_count > 64)
-                return;
-            Atomic::add<unsigned>(_cpu_count, 1);
+
+			Atomic::add<unsigned>(_cpu_count, 1);
             _idle_cpus.set(cpu);
         }
 
