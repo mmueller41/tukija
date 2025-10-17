@@ -26,8 +26,8 @@ bool Mdb::insert_node (Mdb *p, mword a)
 {
     Lock_guard <Spinlock> guard (lock);
 
-    if (!p->alive())
-        return false;
+    /*if (!p->alive())
+        return false;*/
 
     if (!(node_attr = p->node_attr & a))
         return false;
