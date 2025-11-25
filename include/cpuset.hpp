@@ -123,7 +123,7 @@ class Cpuset
         unsigned first_cpu()
         {
             long cpu = -1;
-            for (unsigned i = 0; values(); i++) {
+            for (unsigned i = 0; i < values(); i++) {
                 cpu = bit_scan_forward(raw[i]);
                 if (cpu != -1)
                     break;
