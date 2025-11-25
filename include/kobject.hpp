@@ -33,14 +33,14 @@ class Kobject : public Mdb
     protected:
         Spinlock lock { };
 
-        enum Type
-        {
-            PD,
-            EC,
-            SC,
-            PT,
-            SM,
-            INVALID,
+		enum Type {
+			PD,
+			EC,
+			SC,
+			PT,
+			SM,
+			INVALID,
+			HABITAT
         };
 
         explicit Kobject (Type t, Space *s, mword b = 0, mword a = 0, void (*f)(Rcu_elem *) = free, void (*pref)(Rcu_elem *) = nullptr ) : Mdb (s, reinterpret_cast<mword>(this), b, a, f, pref), objtype (t) {}

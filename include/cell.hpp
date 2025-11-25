@@ -9,6 +9,7 @@
 #include "cip.hpp"
 #include "queue.hpp"
 
+class Habitat;
 class Sc;
 class Sm;
 class Pd;
@@ -29,7 +30,7 @@ class Cell
         Spinlock workers_locks[NUM_CPU];
         Queue<Worker> workers[NUM_CPU];
         Cpuset prefered_cores{0};
-        unsigned prio;
+		unsigned      prio;
 
         /* Prohibit copying (for -Weffc++) */
         Cell(const Cell &);
@@ -38,6 +39,7 @@ class Cell
     public:
         bool to_be_destroyed{false};
         struct Cip *cip{nullptr};
+		Habitat      *home; /* The habitat this cell resides in. */
         bool initialized{false};
 
         /*** Constructors ***/
@@ -48,7 +50,8 @@ class Cell
          * @param pre_alloc - the set of prefered CPU cores for allocation
          * @param new_cip - pointer to the CIP for this cell
         */
-        Cell(unsigned _prio, struct Cip *new_cip) : prio(_prio) , cip(new_cip)
+		Cell(Habitat *habitat, unsigned _prio, struct Cip *new_cip)
+			: prio(_prio), cip(new_cip), home(habitat)
         {
         }
 

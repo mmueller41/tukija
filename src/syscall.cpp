@@ -41,6 +41,7 @@
 #include "acpi.hpp"
 #include "ioapic.hpp"
 #include "core_allocator.hpp"
+#include "habitat.hpp"
 
 template <Sys_regs::Status S, bool T>
 void Ec::sys_finish()
@@ -1367,7 +1368,7 @@ void Ec::sys_create_cell()
 
     Paddr cip_hva = cip->map(Pd::current, pd, r->dst());
 
-    pd->cell = new (*pd) Cell(r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
+	pd->cell = new (*pd) Cell(nullptr, r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
 
     r->cip(Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
 
@@ -1402,11 +1403,10 @@ void Ec::sys_alloc()
 		{
 			if (r->quantity() <= 0)
 				sys_finish<Sys_regs::BAD_PAR>();
-            size_t cores = _core_alloc.alloc(r->quantity(), cell);
+            size_t cores = cell->home->alloc(static_cast<Resource::Type>(r->type()), r->quantity(), cell); //_core_alloc.alloc(r->quantity(), cell);
             if (!cores)
                 sys_finish<Sys_regs::QUO_OOM>();
-            cell->update_channel_params(cores);
-            cell->wake_cores();
+
             break;
         } default:
             trace(TRACE_ERROR, "%s: Resource type %lu not supported, yet.", __func__, r->type());
@@ -1433,18 +1433,23 @@ void Ec::sys_cell_ctrl()
     }
 
     switch (r->op()) {
-        case Sys_cell_ctrl::UPDATE_CORES:
-            _core_alloc.confer(pd->cell);
+	case Sys_cell_ctrl::UPDATE_CORES:
+		{
+			if (!pd->cell->home->set_affinity(pd->cell)) {
+				sys_finish<Sys_regs::BAD_PAR>();
+			}
+			/*_core_alloc.confer(pd->cell);
             if (!pd->cell->initialized)
             {
                 trace(TRACE_CELL, "Intializing cell");
 				_core_alloc.transfer(pd->cell, pd->cell->cip->cores_reserved.first_cpu());
 				pd->cell->initialized = true;
-            }
-            break;
-        default:
-            trace(TRACE_ERROR, "%s: Illegal operation: %u", __func__, r->op());
-            sys_finish<Sys_regs::BAD_PAR>();
+            }*/
+			break;
+        }
+    default:
+        trace(TRACE_ERROR, "%s: Illegal operation: %u", __func__, r->op());
+        sys_finish<Sys_regs::BAD_PAR>();
     }
     
     sys_finish<Sys_regs::SUCCESS>();
@@ -1479,19 +1484,21 @@ void Ec::sys_release()
     }
 
     switch (r->op()) {
-    case Sys_release::RELEASE:
-    {
-        if (r->type() == Resource::CPU)
-        {
-            trace(TRACE_CORE_ALLOC, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
-            _core_alloc.release(cell, Cpu::id);
-        }
-        break;
+
+		case Sys_release::RELEASE: {
+            if (r->type() == Resource::CPU)
+            {
+                trace(TRACE_CORE_ALLOC, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
+                cell->home->release(static_cast<Resource::Type>(r->type()), cell, Cpu::id);
+				//_core_alloc.release(cell, Cpu::id);
+            }
+            break;
         }
         case Sys_release::RETURN: {
             if (r->type() == Resource::CPU) {
                 trace(TRACE_CORE_ALLOC, "Cell %p: Returning CPU %u ", cell, Cpu::id);
-                _core_alloc.return_core(Cpu::id);
+                cell->home->return_resource(Resource::CPU, Cpu::id);
+				//_core_alloc.return_core(Cpu::id);
             }
             break;
         }
@@ -1499,8 +1506,24 @@ void Ec::sys_release()
             trace(TRACE_ERROR, "%s: Unsupported resource type", __func__);
             sys_finish<Sys_regs::BAD_PAR>();
         }
-        }
-        sys_finish<Sys_regs::SUCCESS>();
+    }
+    sys_finish<Sys_regs::SUCCESS>();
+}
+
+void Ec::sys_create_habitat()
+{
+	check<sys_create_habitat>(0, false);
+
+	Sys_create_habitat *r = static_cast<Sys_create_habitat *>(current->sys_regs());
+
+	Capability root_cap = Space_obj::lookup(r->pd());
+	if (EXPECT_FALSE(root_cap.obj()->type() != Kobject::PD) || !(root_cap.prm() & 1UL << Kobject::HABITAT)) {
+		trace(TRACE_ERROR, "%s: Bad HABITAT cap (%#lx), type=%u", __func__, r->pd(),
+		      root_cap.obj()->type());
+		sys_finish<Sys_regs::BAD_CAP>();
+	}
+
+    sys_finish<Sys_regs::SUCCESS>();
 }
 
 extern "C" void (*const syscall[])() = {
@@ -1508,7 +1531,7 @@ extern "C" void (*const syscall[])() = {
 	&Ec::sys_create_pt, &Ec::sys_create_sm, &Ec::sys_revoke, &Ec::sys_misc, &Ec::sys_ec_ctrl,
 	&Ec::sys_sc_ctrl, &Ec::sys_pt_ctrl, &Ec::sys_sm_ctrl, &Ec::sys_assign_pci, &Ec::sys_assign_gsi,
 	&Ec::sys_pd_ctrl, &Ec::sys_create_cell, &Ec::sys_alloc, &Ec::sys_cell_ctrl, &Ec::sys_release,
-	&Ec::sys_map_tip
+	&Ec::sys_map_tip, &Ec::sys_create_habitat
 };
 
 template void Ec::sys_finish<Sys_regs::COM_ABT>();

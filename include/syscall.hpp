@@ -388,6 +388,20 @@ class Sys_create_cell : public Sys_regs
         inline void cip(mword cip_pa) { ARG_3 = cip_pa; }
 };
 
+class Sys_create_habitat : public Sys_regs
+{
+	public:
+
+		ALWAYS_INLINE
+		inline unsigned long sel() const { return ARG_1 >> 9; }
+
+		ALWAYS_INLINE
+		inline unsigned long pd() const { return ARG_2; }
+
+		ALWAYS_INLINE
+		inline unsigned long dst() const { return ARG_3; }
+};
+
 class Sys_cell_ctrl : public Sys_regs
 {
     public:
