@@ -4,14 +4,18 @@
  * Copyright (c) 2025 Michael Müller <michael.mueller@uos.de>, Osnabrück University
  */
 
+#include "compiler.hpp"
 #include "cpuset.hpp"
 #include "core_allocator.hpp"
 #include "kobject.hpp"
+#include "quota.hpp"
 #include "rcu.hpp"
 #include "refptr.hpp"
 #include "resource.hpp"
 #include "kobject.hpp"
+#include "slab.hpp"
 #include "space_obj.hpp"
+#include "pd.hpp"
 
 class Cell;
 
@@ -19,6 +23,10 @@ struct Habitat_info_page
 {
 		alignas(64) Cpuset reserved_cores{0};
 		alignas(64) Cpuset current_cores{0};
+		alignas(64) bool   resizeable{false};
+		
+		Paddr map(Pd *parent, Paddr parent_va);
+		void *operator new(size_t, Pd &pd);
 };
 
 class Habitat : public Kobject, public Refcount
@@ -26,7 +34,6 @@ class Habitat : public Kobject, public Refcount
 	private:
 
 		Habitat_info_page *haip;        /* Page containing the resources this habitat controls */
-		Core_allocator     core_alloc{};  /* CPU core allocator for this habitat */
 		Cell *hoitaja; /* Pointer to the Hoitaja instance of this cell. This is used for allocating
 		                  additional CPU cores from the parent habitat and to forward withdrawal
 		                  requests to. */
@@ -55,6 +62,8 @@ class Habitat : public Kobject, public Refcount
 				delete habitat;
 		    }*/
 		}
+
+		static Slab_cache cache;
 
 	public:
 
@@ -106,7 +115,24 @@ class Habitat : public Kobject, public Refcount
 		 */
         bool   set_affinity(Cell *cell);
 
+		Cpuset get_affinity()
+		{
+			return haip->reserved_cores;
+		}
+
+		bool resizeable()
+		{
+			return haip->resizeable;
+		}
 		
+		ALWAYS_INLINE
+		static inline void *operator new(size_t, Quota &quota) { return cache.alloc(quota); }
+
+		ALWAYS_INLINE
+		static inline void operator delete(void *ptr)
+		{
+			cache.free(ptr, Pd::current->quota);
+		}
 		
         static Habitat root;
 };

@@ -382,10 +382,13 @@ class Sys_create_cell : public Sys_regs
         inline unsigned short prio() const { return static_cast <unsigned short>(flags() & 0xFF); }
 
         ALWAYS_INLINE
-        inline unsigned long dst() const { return ARG_2; }
+        inline unsigned long dst() const { return ARG_3; }
 
         ALWAYS_INLINE
-        inline void cip(mword cip_pa) { ARG_3 = cip_pa; }
+		inline void cip(mword cip_pa) { ARG_4 = cip_pa; }
+
+		ALWAYS_INLINE
+		inline unsigned long habitat() const { return ARG_2; }
 };
 
 class Sys_create_habitat : public Sys_regs
@@ -396,10 +399,7 @@ class Sys_create_habitat : public Sys_regs
 		inline unsigned long sel() const { return ARG_1 >> 9; }
 
 		ALWAYS_INLINE
-		inline unsigned long pd() const { return ARG_2; }
-
-		ALWAYS_INLINE
-		inline unsigned long dst() const { return ARG_3; }
+		inline unsigned long dst() const { return ARG_2; }
 };
 
 class Sys_cell_ctrl : public Sys_regs

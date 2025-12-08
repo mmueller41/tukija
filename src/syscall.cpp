@@ -20,6 +20,7 @@
  * GNU General Public License version 2 for more details.
  */
 
+#include "buddy.hpp"
 #include "capability.hpp"
 #include "cip.hpp"
 #include "compiler.hpp"
@@ -29,10 +30,13 @@
 #include "hpet.hpp"
 #include "kobject.hpp"
 #include "lapic.hpp"
+#include "memory.hpp"
 #include "pci.hpp"
 #include "pt.hpp"
+#include "regs.hpp"
 #include "sm.hpp"
 #include "space.hpp"
+#include "space_mem.hpp"
 #include "space_obj.hpp"
 #include "stdio.hpp"
 #include "syscall.hpp"
@@ -1357,18 +1361,26 @@ void Ec::sys_create_cell()
         trace(TRACE_ERROR, "%s: Bad PD cap (%#lx), type=%u", __func__, r->pd(), cap.obj()->type());
         sys_finish<Sys_regs::BAD_CAP>();
     }
-
+	
     Pd *pd = static_cast<Pd*>(cap.obj());
     if (pd->cell) {
         trace(TRACE_ERROR, "%s: A cell was already created for PD %#lx", __func__, r->pd());
         sys_finish<Sys_regs::BAD_PAR>();
-    }
+	}
+
+	cap = Space_obj::lookup(r->habitat());
+	if (EXPECT_FALSE(cap.obj()->type() != Kobject::HABITAT)) {
+        trace(TRACE_ERROR, "%s: Bad Habitat cap (%#lx), type=%u", __func__, r->habitat(), cap.obj()->type());
+        sys_finish<Sys_regs::BAD_CAP>();
+	}
+
+    Habitat *habitat = static_cast<Habitat*>(cap.obj());
 
     struct Cip *cip = new (*pd) Cip();
 
     Paddr cip_hva = cip->map(Pd::current, pd, r->dst());
 
-	pd->cell = new (*pd) Cell(nullptr, r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
+	pd->cell = new (*pd) Cell(habitat, r->prio(), reinterpret_cast<struct Cip *>(cip_hva));
 
     r->cip(Buddy::ptr_to_phys(reinterpret_cast<void*>(cip_hva)));
 
@@ -1489,16 +1501,14 @@ void Ec::sys_release()
             if (r->type() == Resource::CPU)
             {
                 trace(TRACE_CORE_ALLOC, "Cell %p: Freeing CPU %u ", cell, Cpu::id);
-                cell->home->release(static_cast<Resource::Type>(r->type()), cell, Cpu::id);
-				//_core_alloc.release(cell, Cpu::id);
+				_core_alloc.release(cell, Cpu::id);
             }
             break;
         }
         case Sys_release::RETURN: {
             if (r->type() == Resource::CPU) {
                 trace(TRACE_CORE_ALLOC, "Cell %p: Returning CPU %u ", cell, Cpu::id);
-                cell->home->return_resource(Resource::CPU, Cpu::id);
-				//_core_alloc.return_core(Cpu::id);
+				_core_alloc.return_core(Cpu::id);
             }
             break;
         }
@@ -1515,12 +1525,34 @@ void Ec::sys_create_habitat()
 	check<sys_create_habitat>(0, false);
 
 	Sys_create_habitat *r = static_cast<Sys_create_habitat *>(current->sys_regs());
+	trace(0, "%s: sel=%#lx dst=%lx", __func__, r->sel(), r->dst());
 
-	Capability root_cap = Space_obj::lookup(r->pd());
-	if (EXPECT_FALSE(root_cap.obj()->type() != Kobject::PD) || !(root_cap.prm() & 1UL << Kobject::HABITAT)) {
-		trace(TRACE_ERROR, "%s: Bad HABITAT cap (%#lx), type=%u", __func__, r->pd(),
-		      root_cap.obj()->type());
+	struct Habitat_info_page *haip = new (*Pd::current) Habitat_info_page();
+
+	haip->map(Pd::current, r->dst());
+	
+	Habitat *h = new (Pd::current->quota) Habitat(Pd::current, r->sel(), haip, Pd::current->cell, nullptr);
+    trace(0, "Created habitat at %p", static_cast<void*>(h));
+
+	if (!Space_obj::insert_root(Pd::current->quota, h)) {
+		trace(TRACE_ERROR, "%s: Non-NULL CAP (%#lx)", __func__, r->sel());
+		delete h;
 		sys_finish<Sys_regs::BAD_CAP>();
+	}
+
+	trace(0, "HAIP content %c", *reinterpret_cast<char *>(haip));
+
+	Paddr haip_pa = 0;
+	Pd::kern.Space_mem::lookup(reinterpret_cast<mword>(haip), haip_pa);
+	trace(0, "HAIP HVA mapped to PA %lx", haip_pa);
+	trace(0, "HAIP is at GVA %#lx PA %#lx HVA %p", r->dst(), haip_pa, haip);
+	
+	Capability cap = Space_obj::lookup(r->sel());
+	if (cap.obj()->type() != Kobject::HABITAT) {
+		trace(TRACE_ERROR, "Could not create habitat %#lx", r->sel());
+		sys_finish<Sys_regs::BAD_CAP>();
+	} else {
+		trace(0, "Habitat succesfully created.");
 	}
 
     sys_finish<Sys_regs::SUCCESS>();
