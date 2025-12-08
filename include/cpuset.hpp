@@ -23,6 +23,7 @@
 
 #include "atomic.hpp"
 #include "bits.hpp"
+#include "compiler.hpp"
 #include "types.hpp"
 #include "console.hpp"
 #include "stdio.hpp"
@@ -88,7 +89,14 @@ class Cpuset
         {
             for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
                 raw[i] &= ~subtrahend.raw[i];
-        }
+		}
+
+		ALWAYS_INLINE
+		inline void intersect(Cpuset const &other)
+		{
+			for (unsigned i = 0; i < sizeof(raw) / sizeof(raw[0]); i++)
+				raw[i] &= other.raw[i];
+		}
 
        /* template <typename T>
         void for_each (T const &fn)

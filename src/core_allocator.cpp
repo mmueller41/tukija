@@ -1,8 +1,10 @@
 #include "core_allocator.hpp"
+#include "compiler.hpp"
 #include "stdio.hpp"
 #include "pd.hpp"
 #include "hazards.hpp"
 #include "lapic.hpp"
+#include "habitat.hpp"
 
 size_t Core_allocator::alloc(size_t quantity, Cell *cell)
 {
@@ -35,8 +37,13 @@ size_t Core_allocator::alloc(size_t quantity, Cell *cell)
        free CPU cores from other cells. */
     trace(TRACE_CORE_ALLOC, "Need to borrow %lu cores", quantity - cores_allocated);
 
+	Cpuset idle_cpus = _idle_cpus;
+
+	if (EXPECT_FALSE(!cell->home->resizeable()))
+        idle_cpus.intersect(cell->home->get_affinity());
+
     Cpuset::for_each_until(
-        _idle_cpus,
+        idle_cpus,
         [&](long cpu)
         {
             if (_resources[cpu].occupy(cell))
